@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+:root {
+  --court-green: #0a2818;
+  --court-blue: #0a1a2f;
+  --shuttle-white: #f7f7f7;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: linear-gradient(160deg, var(--court-green), var(--court-blue));
+  color: var(--shuttle-white);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  min-height: 100vh;
+}
+
+/* Reusable badminton court lines */
+.court-lines {
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
