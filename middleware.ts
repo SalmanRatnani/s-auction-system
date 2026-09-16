@@ -13,9 +13,6 @@ const PUBLIC_PATHS = [
 
 const PUBLIC_PREFIXES = [
   "/watch", // public viewer token link
-  "/api/webhook",
-  "/api/upload-url", // Google Form webhook
-  "/api/auth", // Supabase auth callbacks
 ];
 
 export async function middleware(request: NextRequest) {
@@ -63,8 +60,13 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except static assets.
+     * Match all paths EXCEPT:
+     *   - /api/*          (route handlers do their own auth)
+     *   - /_next/static   (build assets)
+     *   - /_next/image    (image optimization)
+     *   - /favicon.ico
+     *   - static files (svg, png, jpg, jpeg, gif, webp, mp3)
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp3)$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp3)$).*)",
   ],
 };
