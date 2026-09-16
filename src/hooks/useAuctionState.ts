@@ -36,9 +36,19 @@ export type AuctionStateResponse = {
     created_at: string;
   } | null;
   counts: Record<string, number>;
+  teams: Array<{
+    id: string;
+    name: string;
+    logo_url: string | null;
+    captain_user_id: string | null;
+    initial_purse: number;
+    remaining_purse: number;
+    spent: number;
+    squad_count: number;
+  }>;
 };
 
-export function useAuctionState(auctionId: string) {
+export function useAuctionState(auctionId: string, pollMs = 0) {
   const [state, setState] = useState<AuctionStateResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -60,32 +70,22 @@ export function useAuctionState(auctionId: string) {
       .channel(`auction-${auctionId}`)
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "auction_players",
-          filter: `auction_id=eq.${auctionId}`,
-        },
+        { event: "*", schema: "public", table: "auction_players", filter: `auction_id=eq.${auctionId}` },
         () => refresh()
       )
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "bids",
-          filter: `auction_id=eq.${auctionId}`,
-        },
+        { event: "*", schema: "public", table: "bids", filter: `auction_id=eq.${auctionId}` },
         () => refresh()
       )
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "auctions",
-          filter: `id=eq.${auctionId}`,
-        },
+        { event: "*", schema: "public", table: "auctions", filter: `id=eq.${auctionId}` },
+        () => refresh()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "purse_ledger", filter: `auction_id=eq.${auctionId}` },
         () => refresh()
       )
       .subscribe();
@@ -94,6 +94,13 @@ export function useAuctionState(auctionId: string) {
       supabase.removeChannel(channel);
     };
   }, [auctionId, refresh]);
+
+  // Optional polling fallback (set pollMs = 2000 when realtime is unreliable)
+  useEffect(() => {
+    if (!pollMs) return;
+    const t = setInterval(refresh, pollMs);
+    return () => clearInterval(t);
+  }, [pollMs, refresh]);
 
   return { state, loading, refresh };
 }

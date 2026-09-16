@@ -20,6 +20,7 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/admin/viewer-links", label: "Viewer Links", icon: "🔗" },
     { href: "/admin/audit", label: "Audit Log", icon: "📋" },
     { href: "/admin/exports", label: "Exports", icon: "📤" },
+    { href: "/auctioneer/console", label: "Auction Console", icon: "🎙️" },
   ],
   AUCTIONEER: [
     { href: "/auctioneer/console", label: "Auction Console", icon: "🎯" },

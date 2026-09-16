@@ -10,15 +10,12 @@ import { DEFAULT_BASE_PRICES, type Category } from "@/constants/categories";
 
 export function ConsoleClient({ auctionId }: { auctionId: string }) {
   const { state, loading, refresh } = useAuctionState(auctionId);
-  const [busy, setBusy] = useState<null | "unsold">(null);
+  const [busy, setBusy] = useState<null | "unsold" | "sell" | "undo">(null);
   const [err, setErr] = useState<string | null>(null);
 
-  if (loading || !state) {
-    return <div className="text-white/50">Loading auction…</div>;
-  }
+  if (loading || !state) return <div className="text-white/50">Loading auction…</div>;
 
-  const { auction, current, highestBid, counts } = state;
-
+  const { auction, current, highestBid, counts, teams } = state;
   const isLive = auction?.status === "LIVE";
   const hasCurrent = !!current;
   const basePrice =
@@ -26,6 +23,19 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
       ? DEFAULT_BASE_PRICES[current.player.grade as Category] ?? 0
       : 0;
   const currentBid = highestBid?.amount ?? 0;
+
+  async function call(endpoint: string, label: string) {
+    setBusy(label as typeof busy);
+    setErr(null);
+    const res = await fetch(`/api/auction/${auctionId}/${endpoint}`, { method: "POST" });
+    const body = await res.json().catch(() => ({}));
+    setBusy(null);
+    if (!res.ok) {
+      setErr(body.error ?? "Failed");
+      return;
+    }
+    refresh();
+  }
 
   async function drawNext(category: string) {
     setErr(null);
@@ -37,21 +47,6 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {
       setErr(body.error ?? "Draw failed");
-      return;
-    }
-    refresh();
-  }
-
-  async function markUnsold() {
-    setBusy("unsold");
-    setErr(null);
-    const res = await fetch(`/api/auction/${auctionId}/unsold`, {
-      method: "POST",
-    });
-    const body = await res.json().catch(() => ({}));
-    setBusy(null);
-    if (!res.ok) {
-      setErr(body.error ?? "Failed");
       return;
     }
     refresh();
@@ -75,7 +70,7 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
       {!isLive && (
         <Card className="border-amber-500/30">
           <CardBody className="text-sm text-amber-300">
-            Auction is not LIVE. Start it from <strong>Auction Control</strong> before drawing players.
+            Auction is not LIVE. Start it from <strong>Auction Control</strong>.
           </CardBody>
         </Card>
       )}
@@ -93,20 +88,33 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
             highestBid={highestBid}
             basePrice={basePrice}
             currentBid={currentBid}
+            teams={teams}
           />
 
           <div className="flex flex-wrap gap-3">
             <Button
+              onClick={() => call("sell", "sell")}
+              loading={busy === "sell"}
+              disabled={busy !== null || !highestBid}
+            >
+              ✅ Sell to {teams.find((t) => t.id === highestBid?.team_id)?.name ?? "…"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => call("undo-bid", "undo")}
+              loading={busy === "undo"}
+              disabled={busy !== null || !highestBid}
+            >
+              ↶ Undo last bid
+            </Button>
+            <Button
               variant="danger"
-              onClick={markUnsold}
+              onClick={() => call("unsold", "unsold")}
               loading={busy === "unsold"}
               disabled={busy !== null}
             >
               Mark unsold
             </Button>
-            <p className="text-xs text-white/40 self-center">
-              Selling and undo come in Phase 3.4 once captains can bid.
-            </p>
           </div>
         </div>
       ) : (

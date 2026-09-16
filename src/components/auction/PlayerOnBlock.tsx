@@ -1,13 +1,16 @@
 "use client";
 
 import { formatINR } from "@/lib/utils";
-import { CATEGORY_COLORS, DEFAULT_BASE_PRICES, type Category } from "@/constants/categories";
+import { CATEGORY_COLORS, type Category } from "@/constants/categories";
+
+type Team = { id: string; name: string };
 
 export function PlayerOnBlock({
   player,
   highestBid,
   basePrice,
   currentBid,
+  teams,
 }: {
   player: {
     id: string;
@@ -23,10 +26,15 @@ export function PlayerOnBlock({
   highestBid: { id: string; amount: number; team_id: string; created_at: string } | null;
   basePrice: number;
   currentBid: number | null;
+  teams?: Team[];
 }) {
   const gradeClass =
     CATEGORY_COLORS[player.grade as Category] ??
     "bg-white/5 text-white/70 border-white/10";
+
+  const leader = highestBid && teams
+    ? teams.find((t) => t.id === highestBid.team_id)
+    : null;
 
   return (
     <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-950/60 to-blue-950/60 p-6 md:p-8">
@@ -48,14 +56,10 @@ export function PlayerOnBlock({
             <span className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-bold ${gradeClass}`}>
               {player.grade}
             </span>
-            <span className="text-xs text-white/40 font-mono">
-              {player.player_code}
-            </span>
+            <span className="text-xs text-white/40 font-mono">{player.player_code}</span>
           </div>
 
-          <h2 className="text-4xl md:text-5xl font-black mt-3 truncate">
-            {player.name}
-          </h2>
+          <h2 className="text-4xl md:text-5xl font-black mt-3 truncate">{player.name}</h2>
 
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
             {player.playing_centre && (
@@ -81,13 +85,6 @@ export function PlayerOnBlock({
             </div>
           )}
 
-          {player.participation_history && (
-            <div className="mt-3">
-              <div className="text-white/40 text-xs uppercase tracking-wider mb-1">Participation</div>
-              <p className="text-white/70 text-sm whitespace-pre-wrap">{player.participation_history}</p>
-            </div>
-          )}
-
           <div className="mt-6 grid grid-cols-2 gap-4">
             <div className="rounded-xl bg-black/30 border border-white/10 p-4">
               <div className="text-white/40 text-xs uppercase tracking-wider">Base price</div>
@@ -100,17 +97,20 @@ export function PlayerOnBlock({
                 Current bid
               </div>
               <div className="text-2xl font-bold text-emerald-300 mt-1">
-                {currentBid && currentBid > 0
-                  ? formatINR(currentBid, { compact: true })
-                  : "—"}
+                {currentBid && currentBid > 0 ? formatINR(currentBid, { compact: true }) : "—"}
               </div>
             </div>
           </div>
 
+          {leader && (
+            <p className="text-sm text-emerald-300 mt-3">
+              🏆 Leading: <strong>{leader.name}</strong>
+            </p>
+          )}
+
           {highestBid && (
-            <p className="text-xs text-white/50 mt-3">
-              Leading bid placed at{" "}
-              {new Date(highestBid.created_at).toLocaleTimeString("en-IN")}
+            <p className="text-xs text-white/50 mt-1">
+              Placed at {new Date(highestBid.created_at).toLocaleTimeString("en-IN")}
             </p>
           )}
         </div>
