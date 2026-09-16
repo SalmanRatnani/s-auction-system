@@ -66,26 +66,22 @@ async function Inner() {
                   )}
                   {list.map((p) => (
                     <div
-                      key={p.id}
-                      className="flex items-center gap-2 py-1 border-b border-white/5 last:border-0"
-                    >
-                      {p.image_url ? (
-                        <img
-                          src={p.image_url}
-                          alt=""
-                          className="h-8 w-8 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="h-8 w-8 rounded-full bg-white/5" />
-                      )}
-                      <Link
-                        href={`/admin/registrations/${p.id}`}
-                        className="flex-1 text-sm truncate hover:text-emerald-300"
-                      >
-                        {p.name}
-                      </Link>
-                      <GradeChanger playerId={p.id} currentGrade={p.grade} />
-                    </div>
+  key={p.id}
+  className="flex items-center gap-2 py-1 border-b border-white/5 last:border-0 group"
+>
+  {p.image_url ? (
+    <img
+      src={p.image_url}
+      alt=""
+      className="h-8 w-8 rounded-full object-cover"
+    />
+  ) : (
+    <div className="h-8 w-8 rounded-full bg-white/5" />
+  )}
+  <span className="flex-1 text-sm truncate">{p.name}</span>
+  <GradeChanger playerId={p.id} currentGrade={p.grade} />
+  <DeletePlayerButton playerId={p.id} playerName={p.name} />
+</div>
                   ))}
                 </div>
               </CardBody>
