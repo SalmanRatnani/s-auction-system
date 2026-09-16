@@ -5,6 +5,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CATEGORY_ORDER, PLAYERS_PER_CATEGORY } from "@/constants/categories";
 import { GradeChanger } from "./GradeChanger";
+import { DeletePlayerButton } from "./DeletePlayerButton";
 
 export const dynamic = "force-dynamic";
 
