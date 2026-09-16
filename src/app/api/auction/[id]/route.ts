@@ -1,82 +1,52 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { DEFAULT_BASE_PRICES, INITIAL_PURSE_PAISE, DEFAULT_INCREMENT_PAISE } from "@/constants/categories";
 
-async function requireController() {
-  const userClient = await createClient();
-  const { data: { user } } = await userClient.auth.getUser();
-  if (!user) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-
-  const { data: profile } = await userClient
-    .from("users").select("role").eq("id", user.id).single();
-  if (profile?.role !== "MAIN_CONTROLLER") {
-    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
-  }
-  return { user };
-}
-
-export async function GET(
+export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const auth = await requireController();
-  if (auth.error) return auth.error;
 
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("auctions").select("*").eq("id", id).single();
-  if (error || !data) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ auction: data });
-}
+  const userClient = await createClient();
+  const { data: { user } } = await userClient.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  const auth = await requireController();
-  if (auth.error) return auth.error;
-
-  const body = (await request.json().catch(() => ({}))) as {
-    name?: string;
-    mode?: "DRY_RUN" | "LIVE";
-    config?: Record<string, unknown>;
-  };
-
-  const admin = createAdminClient();
-  const { data: current } = await admin
-    .from("auctions").select("status, config").eq("id", id).single();
-  if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  if (current.status === "LIVE" || current.status === "PAUSED") {
-    // Only allow config tweaks mid-auction that don't break integrity.
-    // For now: block all config changes while live.
-    if (body.config) {
-      return NextResponse.json(
-        { error: "Cannot change config while auction is live" },
-        { status: 409 }
-      );
-    }
+  const { data: profile } = await userClient
+    .from("users").select("role").eq("id", user.id).single();
+  if (profile?.role !== "MAIN_CONTROLLER" && profile?.role !== "AUCTIONEER") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const update: Record<string, unknown> = {};
-  if (typeof body.name === "string" && body.name.trim()) update.name = body.name.trim();
-  if (body.mode) update.mode = body.mode;
-  if (body.config) update.config = { ...(current.config ?? {}), ...body.config };
+  const admin = createAdminClient();
 
-  const { data, error } = await admin
-    .from("auctions").update(update).eq("id", id).select().single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const { data: current } = await admin
+    .from("auction_players")
+    .select("id, player_id")
+    .eq("auction_id", id)
+    .eq("status", "CURRENT")
+    .maybeSingle();
+
+  if (!current) {
+    return NextResponse.json({ error: "No player on the block" }, { status: 409 });
+  }
+
+  await admin
+    .from("auction_players")
+    .update({ status: "UNSOLD" })
+    .eq("id", current.id);
+
+  await admin
+    .from("players")
+    .update({ status: "UNSOLD" })
+    .eq("id", current.player_id);
 
   await admin.from("audit_log").insert({
-    actor_user_id: auth.user!.id,
-    action: "AUCTION_CONFIG_UPDATED",
-    entity_type: "auction",
-    entity_id: id,
-    payload: update,
+    actor_user_id: user.id,
+    action: "PLAYER_UNSOLD",
+    entity_type: "auction_player",
+    entity_id: current.id,
   });
 
-  return NextResponse.json({ auction: data });
+  return NextResponse.json({ ok: true });
 }
