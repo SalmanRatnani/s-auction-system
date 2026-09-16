@@ -13,7 +13,8 @@ const PUBLIC_PATHS = [
 
 const PUBLIC_PREFIXES = [
   "/watch", // public viewer token link
-  "/api/webhook", // Google Form webhook
+  "/api/webhook",
+  "/api/upload-url", // Google Form webhook
   "/api/auth", // Supabase auth callbacks
 ];
 
