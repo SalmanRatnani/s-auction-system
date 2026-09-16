@@ -12,6 +12,7 @@ const NAV: Record<Role, NavItem[]> = {
   MAIN_CONTROLLER: [
     { href: "/dashboard", label: "Dashboard", icon: "🏸" },
     { href: "/auctioneer/console", label: "Auction Console", icon: "🎙️" },
+    { href: "/projector", label: "Projector", icon: "📽️" },
     { href: "/admin/teams", label: "Teams", icon: "👥" },
     { href: "/admin/registrations", label: "Registrations", icon: "📝" },
     { href: "/admin/grading", label: "Grading", icon: "⭐" },
