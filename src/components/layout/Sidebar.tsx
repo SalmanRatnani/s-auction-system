@@ -11,6 +11,7 @@ type NavItem = { href: string; label: string; icon: string };
 const NAV: Record<Role, NavItem[]> = {
   MAIN_CONTROLLER: [
     { href: "/dashboard", label: "Dashboard", icon: "🏸" },
+    { href: "/auctioneer/console", label: "Auction Console", icon: "🎙️" },
     { href: "/admin/teams", label: "Teams", icon: "👥" },
     { href: "/admin/registrations", label: "Registrations", icon: "📝" },
     { href: "/admin/grading", label: "Grading", icon: "⭐" },
@@ -20,20 +21,22 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/admin/viewer-links", label: "Viewer Links", icon: "🔗" },
     { href: "/admin/audit", label: "Audit Log", icon: "📋" },
     { href: "/admin/exports", label: "Exports", icon: "📤" },
-    { href: "/auctioneer/console", label: "Auction Console", icon: "🎙️" },
   ],
   AUCTIONEER: [
-    { href: "/auctioneer/console", label: "Auction Console", icon: "🎯" },
+    { href: "/auctioneer/console", label: "Auction Console", icon: "🎙️" },
+    { href: "/captain/teams", label: "All Teams", icon: "👥" },
     { href: "/dashboard", label: "Dashboard", icon: "🏸" },
   ],
   CAPTAIN: [
-    //{ href: "/captain/bid", label: "Bid", icon: "⚡" },
+    { href: "/captain/bid", label: "Bid", icon: "⚡" },
     { href: "/captain/my-team", label: "My Team", icon: "🛡️" },
-    //{ href: "/captain/teams", label: "All Teams", icon: "👥" },
+    { href: "/captain/teams", label: "All Teams", icon: "👥" },
+    { href: "/viewer/live", label: "Live", icon: "📺" },
     { href: "/dashboard", label: "Dashboard", icon: "🏸" },
   ],
   VIEWER: [
     { href: "/viewer/live", label: "Live Auction", icon: "📺" },
+    { href: "/captain/teams", label: "All Teams", icon: "👥" },
     { href: "/dashboard", label: "Dashboard", icon: "🏸" },
   ],
 };

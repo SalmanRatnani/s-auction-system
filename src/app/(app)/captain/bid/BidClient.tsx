@@ -7,6 +7,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
 import { DEFAULT_BASE_PRICES, DEFAULT_INCREMENT_PAISE, type Category } from "@/constants/categories";
 import { formatINR } from "@/lib/utils";
+import { useBidAlerts } from "@/hooks/useBidAlerts";
 
 export function BidClient({
   auctionId,
@@ -18,6 +19,9 @@ export function BidClient({
   const { state, loading, refresh } = useAuctionState(auctionId, 3000); // 3s polling fallback
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+
+  // Trigger sound + vibration when a new bid arrives from someone else
+  useBidAlerts(highestBid?.id ?? null);
 
   if (loading || !state) return <div className="text-white/50">Loading…</div>;
 
