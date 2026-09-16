@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     .insert({
       auction_id: auction.id,
       name: `Team ${slot}`,
-      initial_purse: PURSE_PAISE, // ₹1 Cr in paise
+      initial_purse: PURSE_PAISE,
     })
     .select()
     .single();

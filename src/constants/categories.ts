@@ -1,6 +1,6 @@
 // src/constants/categories.ts
-/** Team purse: ₹1,00,00,000 (1 crore) expressed in paise. */
-export const PURSE_PAISE = 1_000_000_000; // 1 crore rupees = 1,000,000,000 paise
+/** Team purse: ₹1,00,00,000 (1 crore) = 1,000,000,000 paise. */
+export const PURSE_PAISE = 1_000_000_000;
 
 /** Human-readable purse for UI hints. */
 export const PURSE_LABEL = "₹1,00,00,000 (1 Cr)";
