@@ -21,7 +21,14 @@ export function BidClient({
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   // Trigger sound + vibration when a new bid arrives from someone else
-  useBidAlerts(highestBid?.id ?? null);
+    // Hooks must run unconditionally, before any early return.
+  useBidAlerts(state?.highestBid?.id ?? null);
+
+  useEffect(() => {
+    if (!msg) return;
+    const t = setTimeout(() => setMsg(null), 3000);
+    return () => clearTimeout(t);
+  }, [msg]);
 
   if (loading || !state) return <div className="text-white/50">Loading…</div>;
 
@@ -43,20 +50,11 @@ export function BidClient({
   const currentBid = highestBid?.amount ?? 0;
   const isMyLead = highestBid && myTeam && highestBid.team_id === myTeam.id;
 
-  // Suggested next bid amount
   const nextBid = currentBid === 0 ? basePrice : currentBid + increment;
 
-  // Purse check
   const purseAfter = myTeam ? myTeam.remaining_purse - nextBid : 0;
   const purseOk = myTeam && purseAfter >= 0;
   const squadOk = myTeam ? myTeam.squad_count < maxSquad : false;
-
-  // Auto-clear messages after 3s
-  useEffect(() => {
-    if (!msg) return;
-    const t = setTimeout(() => setMsg(null), 3000);
-    return () => clearTimeout(t);
-  }, [msg]);
 
   async function placeBid(amount: number) {
     if (!current) return;
