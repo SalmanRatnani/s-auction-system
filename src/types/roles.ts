@@ -9,26 +9,15 @@ export const ROLE_LABELS: Record<Role, string> = {
   VIEWER: "Viewer",
 };
 
+/**
+ * Landing page for each role after sign-in.
+ * CAPTAIN → /captain/my-team for now (bid UI comes in Phase 3.4).
+ */
 export const ROLE_HOME: Record<Role, string> = {
   MAIN_CONTROLLER: "/dashboard",
   AUCTIONEER: "/auctioneer/console",
-  CAPTAIN: "/captain/bid",
+  CAPTAIN: "/captain/my-team",
   VIEWER: "/viewer/live",
-};
-
-/** Route prefixes each role is allowed to access (middleware enforces). */
-export const ROLE_ROUTES: Record<Role, string[]> = {
-  MAIN_CONTROLLER: [
-    "/dashboard",
-    "/admin",
-    "/auctioneer",
-    "/captain",
-    "/viewer",
-    "/projector",
-  ],
-  AUCTIONEER: ["/dashboard", "/auctioneer", "/viewer", "/projector"],
-  CAPTAIN: ["/dashboard", "/captain", "/viewer"],
-  VIEWER: ["/dashboard", "/viewer"],
 };
 
 /** Who can do what (mirrors DB RLS — used for UI hints). */

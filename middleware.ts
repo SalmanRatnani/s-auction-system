@@ -1,24 +1,31 @@
 // middleware.ts
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
-import { ROLE_ROUTES, type Role } from "@/types/roles";
 
-/** Public routes (no auth required). */
-const PUBLIC_PATHS = [
-  "/",
-  "/login",
-  "/verify",
-  "/error",
-];
+/**
+ * Middleware — auth-only.
+ *
+ * Role enforcement happens in two places:
+ *   1. Page-level  → <RoleGuard allow={[...]}>  (server component)
+ *   2. API routes  → explicit profile.role check inside the handler
+ *
+ * Middleware does NOT check roles because:
+ *   - JWT role metadata is stale until the user signs out/in after a role change
+ *   - API routes are excluded from middleware entirely (see matcher below)
+ */
 
+/** Public page paths (no auth). */
+const PUBLIC_PATHS = ["/", "/login", "/verify", "/error"];
+
+/** Public path prefixes (no auth). */
 const PUBLIC_PREFIXES = [
-  "/watch", // public viewer token link
+  "/watch", // public spectator token link
 ];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Always allow public routes
+  // Public routes pass straight through
   if (
     PUBLIC_PATHS.includes(pathname) ||
     PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))
@@ -36,24 +43,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Fetch role from public.users (cached per-request via JWT? no — one extra query is fine)
-  const role = (user.user_metadata?.role ??
-    user.app_metadata?.role) as Role | undefined;
-
-  // If role not in JWT metadata, allow through — page-level guard will block.
-  if (!role) return supabaseResponse;
-
-  const allowed = ROLE_ROUTES[role] ?? [];
-  const isAllowed = allowed.some(
-    (p) => pathname === p || pathname.startsWith(p + "/")
-  );
-
-  if (!isAllowed) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
-  }
-
+  // Authenticated → let the page decide. RoleGuard enforces roles per page.
   return supabaseResponse;
 }
 
