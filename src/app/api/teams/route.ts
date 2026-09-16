@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getOrCreateDraftAuction } from "@/lib/auction";
+import { PURSE_PAISE } from "@/constants/categories";
 
 const MAX_TEAMS = 6;
 
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
     .insert({
       auction_id: auction.id,
       name: `Team ${slot}`,
-      initial_purse: 10_00_00_000, // ₹1 Cr in paise
+      initial_purse: PURSE_PAISE, // ₹1 Cr in paise
     })
     .select()
     .single();
