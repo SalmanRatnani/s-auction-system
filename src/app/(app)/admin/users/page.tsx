@@ -48,7 +48,11 @@ async function Inner() {
                   </div>
                 </div>
                 <RoleBadge role={u.role as Role} />
-                <UserRoleChanger userId={u.id} currentRole={u.role as Role} />
+                <UserRoleChanger
+                  userId={u.id}
+                  currentRole={u.role as Role}
+                  currentEmail={u.email}
+                />
               </div>
             ))}
             {(users ?? []).length === 0 && (

@@ -2,10 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-const VALID = ["MAIN_CONTROLLER", "AUCTIONEER", "CAPTAIN", "VIEWER"];
-
-export async function PATCH(
-  request: NextRequest,
+export async function DELETE(
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -20,29 +18,54 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { role } = (await request.json().catch(() => ({}))) as { role?: string };
-  if (!role || !VALID.includes(role)) {
-    return NextResponse.json({ error: "Invalid role" }, { status: 400 });
-  }
-
-  // Prevent demoting yourself
-  if (id === user.id && role !== "MAIN_CONTROLLER") {
+  // Block self-delete
+  if (id === user.id) {
     return NextResponse.json(
-      { error: "You cannot change your own role" },
+      { error: "You cannot delete your own account" },
       { status: 400 }
     );
   }
 
   const admin = createAdminClient();
-  const { error } = await admin.from("users").update({ role }).eq("id", id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Load target user info for the audit log
+  const { data: target } = await admin
+    .from("users")
+    .select("email, role")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!target) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  // Block deleting another MAIN_CONTROLLER if it would leave 0 or 1
+  if (target.role === "MAIN_CONTROLLER") {
+    const { count } = await admin
+      .from("users")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "MAIN_CONTROLLER");
+    if ((count ?? 0) <= 1) {
+      return NextResponse.json(
+        { error: "Cannot delete the last Main Controller" },
+        { status: 409 }
+      );
+    }
+  }
+
+  // Delete from auth.users → cascades to public.users
+  const { error } = await admin.auth.admin.deleteUser(id);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Audit (this inserts even after the user is gone — safe because we're using admin client)
   await admin.from("audit_log").insert({
     actor_user_id: user.id,
-    action: "ROLE_CHANGED",
+    action: "USER_DELETED",
     entity_type: "user",
     entity_id: id,
-    payload: { role },
+    payload: { email: target.email, role: target.role },
   });
 
   return NextResponse.json({ ok: true });
