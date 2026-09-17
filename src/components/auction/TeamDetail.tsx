@@ -26,7 +26,6 @@ export type TeamDetailData = {
       name: string;
       grade: string;
       image_url: string | null;
-      playing_centre: string | null;
     };
   }>;
 };
@@ -123,10 +122,10 @@ export function TeamDetail({
                     <img
                       src={r.player.image_url}
                       alt=""
-                      className="h-10 w-10 rounded-md object-cover border border-[var(--line-1)]"
+                      className="h-11 w-11 rounded-full object-cover border border-[var(--line-1)]"
                     />
                   ) : (
-                    <div className="h-10 w-10 rounded-md bg-[var(--bg-2)] border border-[var(--line-1)]" />
+                    <div className="h-11 w-11 rounded-full bg-[var(--bg-2)] border border-[var(--line-1)]" />
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-medium text-[var(--fg-1)] truncate">
@@ -134,9 +133,6 @@ export function TeamDetail({
                     </div>
                     <div className="text-[10px] font-mono text-[var(--fg-4)]">
                       {r.player.player_code}
-                      {r.player.playing_centre
-                        ? ` · ${r.player.playing_centre}`
-                        : ""}
                     </div>
                   </div>
                   <Badge tone={toneForGrade(r.player.grade)}>

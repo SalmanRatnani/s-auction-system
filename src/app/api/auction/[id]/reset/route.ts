@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { INITIAL_PURSE_PAISE } from "@/constants/categories";
 
 export async function POST(
   _req: NextRequest,
@@ -71,10 +72,10 @@ export async function POST(
     if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
   }
 
-  // 4) Reset purses for teams in this auction
+  // 4) Reset purses to ₹1 Cr — use the constant, don't hardcode
   const { error: tErr } = await admin
     .from("teams")
-    .update({ initial_purse: 10_00_00_000 })
+    .update({ initial_purse: INITIAL_PURSE_PAISE })
     .eq("auction_id", id);
   if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 });
 
@@ -93,6 +94,7 @@ export async function POST(
     entity_id: id,
     payload: {
       cleared_players: playerIds.length,
+      purse_reset_to: INITIAL_PURSE_PAISE,
       note: "Full reset — bids, rosters, auction_players wiped",
     },
   });

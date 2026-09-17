@@ -7,7 +7,7 @@ import { formatINR } from "@/lib/utils";
 
 export function ProjectorView({
   auctionId,
-  showPurse = true,
+  showPurse = false,
 }: {
   auctionId: string;
   showPurse?: boolean;

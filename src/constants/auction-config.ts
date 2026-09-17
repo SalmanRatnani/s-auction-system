@@ -2,7 +2,7 @@
 
 export const DEFAULT_CONFIG = {
   maxSquad: 18,
-  initialPurse: 10_00_00_000, // ₹1 Cr in paise
+  initialPurse: 1_00_00_000_00, // ₹1 Cr in paise
   increment: 5_000_00,        // ₹5,000 in paise
   timer: { enabled: false, seconds: 30, autoSellOnExpiry: true },
   reserveGuard: false,

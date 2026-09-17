@@ -9,7 +9,7 @@ import { formatINR } from "@/lib/utils";
 
 export function LiveViewer({
   auctionId,
-  showPurse = true,
+  showPurse = false,
   teamLinkBase,
 }: {
   auctionId: string;

@@ -38,18 +38,20 @@ async function Inner() {
   return (
     <div className="space-y-6 max-w-6xl animate-fade-up">
       <header className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-[22px] font-semibold tracking-tight">
-            Team Management
-          </h1>
-          <p className="text-[13px] text-[var(--fg-3)] mt-1">
-            Auction: <span className="text-[var(--fg-1)]">{auction.name}</span>{" "}
-            · <span className="tnum">{teams?.length ?? 0} / {MAX_TEAMS}</span>{" "}
-            teams
-          </p>
-        </div>
-        <CreateTeamButton disabled={(teams?.length ?? 0) >= MAX_TEAMS} />
-      </header>
+  <div>
+    <h1 className="text-[22px] font-semibold tracking-tight">
+      Team Management
+    </h1>
+    <p className="text-[13px] text-[var(--fg-3)] mt-1">
+      <span className="text-[var(--fg-1)]">{auction.name}</span> ·{" "}
+      <span className="tnum">
+        {teams?.length ?? 0} / {MAX_TEAMS}
+      </span>{" "}
+      teams
+    </p>
+  </div>
+  <CreateTeamButton disabled={(teams?.length ?? 0) >= MAX_TEAMS} />
+</header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {(teams ?? []).map((t) => (

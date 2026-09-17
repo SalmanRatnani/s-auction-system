@@ -20,7 +20,7 @@ async function Inner() {
   if (!user) redirect("/login");
 
   const auction = await getOrCreateDraftAuction();
-  if (!auction) return <div className="text-red-300">No auction.</div>;
+  if (!auction) return <div className="text-[var(--danger)]">No auction.</div>;
 
   return (
     <main className="min-h-screen">

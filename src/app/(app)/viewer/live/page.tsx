@@ -20,15 +20,11 @@ async function Inner() {
   if (!user) redirect("/login");
 
   const auction = await getOrCreateDraftAuction();
-  if (!auction) return <div className="text-red-300">No auction.</div>;
-
-  const config = (auction.config ?? {}) as { showPurseToViewers?: boolean };
-  const showPurse = config.showPurseToViewers === true;
+  if (!auction) return <div className="text-[var(--danger)]">No auction.</div>;
 
   return (
     <LiveViewer
       auctionId={auction.id}
-      showPurse={showPurse}
       teamLinkBase="/viewer/team"
     />
   );
