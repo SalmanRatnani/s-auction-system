@@ -16,7 +16,7 @@ export function ProjectorView({
 
   if (loading || !state) {
     return (
-      <div className="min-h-screen grid place-items-center text-white/50">
+      <div className="min-h-screen grid place-items-center text-[13px] text-[var(--fg-3)]">
         Loading…
       </div>
     );
@@ -34,19 +34,21 @@ export function ProjectorView({
     : null;
 
   return (
-    <div className="min-h-screen flex flex-col p-6 md:p-10">
-      <header className="flex items-center justify-between mb-6">
+    <div className="min-h-screen flex flex-col p-8 md:p-12">
+      <header className="flex items-center justify-between mb-8">
         <div>
-          <div className="text-xs uppercase tracking-widest text-white/40">
+          <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--fg-4)]">
             S Auction System
           </div>
-          <div className="text-2xl font-bold">{auction?.name}</div>
+          <div className="text-[24px] font-semibold tracking-tight mt-1">
+            {auction?.name}
+          </div>
         </div>
         <div
-          className={`text-sm font-bold px-3 py-1 rounded-full border ${
+          className={`text-[12px] font-medium px-2.5 py-1 rounded-md border ${
             isLive
-              ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
-              : "bg-amber-500/15 text-amber-300 border-amber-500/40"
+              ? "bg-[var(--success-bg)] text-[var(--success)] border-[var(--success-line)]"
+              : "bg-[var(--warning-bg)] text-[var(--warning)] border-[var(--warning-line)]"
           }`}
         >
           {auction?.status}
@@ -54,8 +56,8 @@ export function ProjectorView({
       </header>
 
       {current?.player ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1">
+          <div className="lg:col-span-2 space-y-6">
             <PlayerOnBlock
               player={current.player}
               highestBid={highestBid}
@@ -64,14 +66,14 @@ export function ProjectorView({
               teams={teams.map((t) => ({ id: t.id, name: t.name }))}
             />
             {leader && (
-              <div className="mt-4 text-center py-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/40">
-                <div className="text-xs uppercase tracking-widest text-emerald-300/70">
+              <div className="text-center py-6 rounded-xl border border-[var(--accent-line)] bg-[var(--accent-bg)]">
+                <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--accent)] opacity-70">
                   Leading bid
                 </div>
-                <div className="text-4xl md:text-5xl font-black text-emerald-300 mt-1">
+                <div className="text-[44px] md:text-[56px] font-semibold text-[var(--accent)] leading-none mt-2">
                   {leader.name}
                 </div>
-                <div className="text-2xl font-bold text-white mt-1">
+                <div className="text-[24px] font-medium text-[var(--fg-1)] tnum mt-3">
                   {formatINR(highestBid!.amount, { compact: true })}
                 </div>
               </div>
@@ -79,38 +81,52 @@ export function ProjectorView({
           </div>
 
           <div>
-            <div className="text-xs uppercase tracking-widest text-white/40 mb-3">
+            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--fg-4)] mb-3">
               Teams
             </div>
             <div className="space-y-2">
               {teams.map((t) => (
                 <div
                   key={t.id}
-                  className={`flex items-center gap-3 p-3 rounded-xl border ${
+                  className={`flex items-center gap-3 p-3 rounded-lg border ${
                     leader?.id === t.id
-                      ? "border-emerald-400/60 bg-emerald-500/10"
-                      : "border-white/10 bg-white/[0.03]"
+                      ? "border-[var(--accent-line)] bg-[var(--accent-bg)]"
+                      : "border-[var(--line-1)] bg-[var(--bg-1)]"
                   }`}
                 >
                   {t.logo_url ? (
                     <img
                       src={t.logo_url}
                       alt=""
-                      className="h-10 w-10 rounded-lg object-cover border border-white/10"
+                      className="h-10 w-10 rounded-md object-cover border border-[var(--line-1)]"
                     />
                   ) : (
-                    <div className="h-10 w-10 rounded-lg bg-white/5 border border-white/10 grid place-items-center">
-                      🏸
+                    <div className="h-10 w-10 rounded-md bg-[var(--bg-2)] border border-[var(--line-1)] grid place-items-center text-[10px] font-mono text-[var(--fg-4)]">
+                      {t.name.slice(0, 2).toUpperCase()}
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold truncate">{t.name}</div>
-                    <div className="text-[10px] text-white/40">
+                    <div
+                      className={`text-[13px] font-medium truncate ${
+                        leader?.id === t.id
+                          ? "text-[var(--accent)]"
+                          : "text-[var(--fg-1)]"
+                      }`}
+                    >
+                      {t.name}
+                    </div>
+                    <div className="text-[10px] text-[var(--fg-4)] tnum">
                       {t.squad_count} players
                     </div>
                   </div>
                   {showPurse && (
-                    <div className="text-sm font-mono text-emerald-300">
+                    <div
+                      className={`text-[13px] font-mono tnum ${
+                        leader?.id === t.id
+                          ? "text-[var(--accent)]"
+                          : "text-[var(--fg-2)]"
+                      }`}
+                    >
                       {formatINR(t.remaining_purse, { compact: true })}
                     </div>
                   )}
@@ -122,9 +138,11 @@ export function ProjectorView({
       ) : (
         <div className="flex-1 grid place-items-center">
           <div className="text-center">
-            <div className="text-6xl mb-4">🏸</div>
-            <div className="text-2xl font-bold text-white/70">
-              {isLive ? "Next player coming up…" : "Auction hasn't started"}
+            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--fg-4)]">
+              {isLive ? "Next up" : "Auction"}
+            </div>
+            <div className="text-[36px] font-semibold text-[var(--fg-2)] mt-2">
+              {isLive ? "Waiting for the next player" : "Hasn't started"}
             </div>
           </div>
         </div>

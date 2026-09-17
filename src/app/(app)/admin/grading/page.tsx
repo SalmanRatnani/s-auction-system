@@ -3,7 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { RoleGuard } from "@/components/guards/RoleGuard";
 import { Card, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CATEGORY_ORDER, PLAYERS_PER_CATEGORY } from "@/constants/categories";
+import {
+  CATEGORY_ORDER,
+  PLAYERS_PER_CATEGORY,
+  toneForGrade,
+} from "@/constants/categories";
 import { GradeChanger } from "./GradeChanger";
 import { DeletePlayerButton } from "./DeletePlayerButton";
 
@@ -23,8 +27,8 @@ async function Inner() {
   const { data: players } = await supabase
     .from("players")
     .select("id, player_code, name, image_url, grade, status")
-    .order("grade")
-    .order("name");
+    .order("grade", { ascending: true })
+    .order("name", { ascending: true });
 
   const byGrade: Record<string, typeof players> = {};
   CATEGORY_ORDER.forEach((c) => (byGrade[c] = []));
@@ -32,57 +36,70 @@ async function Inner() {
     if (p.grade) (byGrade[p.grade] ??= []).push(p);
   });
 
+  const total = players?.length ?? 0;
+
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6 max-w-6xl animate-fade-up">
       <header>
-        <h1 className="text-3xl font-bold">Grading</h1>
-        <p className="text-white/50 text-sm mt-1">
-          {players?.length ?? 0} approved players · {CATEGORY_ORDER.length * PLAYERS_PER_CATEGORY} slots total
+        <h1 className="text-[22px] font-semibold tracking-tight">Grading</h1>
+        <p className="text-[13px] text-[var(--fg-3)] mt-1">
+          <span className="tnum">{total}</span> approved player
+          {total === 1 ? "" : "s"} ·{" "}
+          <span className="tnum">
+            {CATEGORY_ORDER.length * PLAYERS_PER_CATEGORY}
+          </span>{" "}
+          slots total
         </p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {CATEGORY_ORDER.map((c) => {
           const list = byGrade[c] ?? [];
           const over = list.length > PLAYERS_PER_CATEGORY;
           return (
             <Card
               key={c}
-              className={over ? "border-red-500/40" : undefined}
+              className={over ? "border-[var(--danger-line)]" : undefined}
             >
-              <CardBody>
+              <CardBody className="p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <Badge className="text-sm">{c}</Badge>
+                  <Badge tone={toneForGrade(c)}>{c}</Badge>
                   <span
-                    className={`text-xs ${
-                      over ? "text-red-300" : "text-white/50"
+                    className={`text-[11px] tnum ${
+                      over
+                        ? "text-[var(--danger)]"
+                        : "text-[var(--fg-4)]"
                     }`}
                   >
-                    {list.length} / {PLAYERS_PER_CATEGORY}
+                    {list.length}/{PLAYERS_PER_CATEGORY}
                   </span>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-0.5">
                   {list.length === 0 && (
-                    <p className="text-xs text-white/30">No players yet.</p>
+                    <p className="text-[12px] text-[var(--fg-4)] py-1">
+                      No players yet.
+                    </p>
                   )}
                   {list.map((p) => (
                     <div
-  key={p.id}
-  className="flex items-center gap-2 py-1 border-b border-white/5 last:border-0 group"
->
-  {p.image_url ? (
-    <img
-      src={p.image_url}
-      alt=""
-      className="h-8 w-8 rounded-full object-cover"
-    />
-  ) : (
-    <div className="h-8 w-8 rounded-full bg-white/5" />
-  )}
-  <span className="flex-1 text-sm truncate">{p.name}</span>
-  <GradeChanger playerId={p.id} currentGrade={p.grade} />
-  <DeletePlayerButton playerId={p.id} playerName={p.name} />
-</div>
+                      key={p.id}
+                      className="group flex items-center gap-2 py-1.5 border-b border-[var(--line-1)] last:border-0"
+                    >
+                      {p.image_url ? (
+                        <img
+                          src={p.image_url}
+                          alt=""
+                          className="h-7 w-7 rounded-full object-cover border border-[var(--line-1)]"
+                        />
+                      ) : (
+                        <div className="h-7 w-7 rounded-full bg-[var(--bg-2)] border border-[var(--line-1)]" />
+                      )}
+                      <span className="flex-1 text-[12px] text-[var(--fg-1)] truncate">
+                        {p.name}
+                      </span>
+                      <GradeChanger playerId={p.id} currentGrade={p.grade} />
+                      <DeletePlayerButton playerId={p.id} playerName={p.name} />
+                    </div>
                   ))}
                 </div>
               </CardBody>

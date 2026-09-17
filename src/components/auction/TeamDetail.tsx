@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatINR } from "@/lib/utils";
@@ -40,12 +41,13 @@ export function TeamDetail({
   backHref: string;
 }) {
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl animate-fade-up">
       <Link
         href={backHref}
-        className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors"
+        className="inline-flex items-center gap-1.5 text-[13px] text-[var(--fg-3)] hover:text-[var(--fg-1)] transition-colors"
       >
-        ← Back to live auction
+        <ArrowLeft size={14} strokeWidth={2} />
+        Back
       </Link>
 
       <header className="flex items-center gap-5">
@@ -53,46 +55,47 @@ export function TeamDetail({
           <img
             src={team.logo_url}
             alt=""
-            className="h-20 w-20 md:h-24 md:w-24 rounded-2xl object-cover border border-white/10"
+            className="h-16 w-16 md:h-20 md:w-20 rounded-xl object-cover border border-[var(--line-1)]"
           />
         ) : (
-          <div className="h-20 w-20 md:h-24 md:w-24 rounded-2xl bg-white/5 border border-white/10 grid place-items-center text-3xl">
-            🏸
+          <div className="h-16 w-16 md:h-20 md:w-20 rounded-xl bg-[var(--bg-2)] border border-[var(--line-1)] grid place-items-center text-[13px] font-mono text-[var(--fg-4)]">
+            {team.name.slice(0, 2).toUpperCase()}
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <h1 className="text-3xl md:text-4xl font-display font-black truncate">
+          <h1 className="text-[24px] md:text-[28px] font-semibold tracking-tight truncate">
             {team.name}
           </h1>
           {team.captain_display && (
-            <p className="text-sm text-white/50 mt-1">
-              Captain: <span className="text-white/80">{team.captain_display}</span>
+            <p className="text-[13px] text-[var(--fg-3)] mt-1">
+              Captain:{" "}
+              <span className="text-[var(--fg-1)]">{team.captain_display}</span>
             </p>
           )}
-          <p className="text-xs text-white/40 mt-0.5">
+          <p className="text-[11px] text-[var(--fg-4)] tnum mt-0.5">
             {team.squad_count}/{team.maxSquad} players
           </p>
         </div>
       </header>
 
       {showPurse && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <Card>
-            <CardBody>
-              <div className="text-xs text-white/50 uppercase tracking-wider">
+            <CardBody className="p-4">
+              <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
                 Remaining purse
               </div>
-              <div className="text-2xl font-bold text-emerald-300 mt-1">
+              <div className="text-[22px] font-semibold text-[var(--accent)] tnum mt-1.5">
                 {formatINR(team.remaining_purse, { compact: true })}
               </div>
             </CardBody>
           </Card>
           <Card>
-            <CardBody>
-              <div className="text-xs text-white/50 uppercase tracking-wider">
+            <CardBody className="p-4">
+              <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
                 Spent
               </div>
-              <div className="text-2xl font-bold text-white mt-1">
+              <div className="text-[22px] font-semibold text-[var(--fg-1)] tnum mt-1.5">
                 {formatINR(team.spent, { compact: true })}
               </div>
             </CardBody>
@@ -106,36 +109,40 @@ export function TeamDetail({
         </CardHeader>
         <CardBody>
           {team.roster.length === 0 ? (
-            <p className="text-sm text-white/40 py-4">
+            <p className="text-[13px] text-[var(--fg-4)] py-2">
               No players won yet.
             </p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-0.5">
               {team.roster.map((r) => (
                 <div
                   key={r.id}
-                  className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0"
+                  className="flex items-center gap-3 py-2 border-b border-[var(--line-1)] last:border-0"
                 >
                   {r.player.image_url ? (
                     <img
                       src={r.player.image_url}
                       alt=""
-                      className="h-11 w-11 rounded-full object-cover border border-white/10"
+                      className="h-10 w-10 rounded-md object-cover border border-[var(--line-1)]"
                     />
                   ) : (
-                    <div className="h-11 w-11 rounded-full bg-white/5" />
+                    <div className="h-10 w-10 rounded-md bg-[var(--bg-2)] border border-[var(--line-1)]" />
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{r.player.name}</div>
-                    <div className="text-[10px] font-mono text-white/40">
+                    <div className="text-[13px] font-medium text-[var(--fg-1)] truncate">
+                      {r.player.name}
+                    </div>
+                    <div className="text-[10px] font-mono text-[var(--fg-4)]">
                       {r.player.player_code}
                       {r.player.playing_centre
                         ? ` · ${r.player.playing_centre}`
                         : ""}
                     </div>
                   </div>
-                  <Badge tone={toneForGrade(r.player.grade)}>{r.player.grade}</Badge>
-                  <div className="text-sm font-mono text-emerald-300 w-24 text-right">
+                  <Badge tone={toneForGrade(r.player.grade)}>
+                    {r.player.grade}
+                  </Badge>
+                  <div className="text-[13px] font-mono text-[var(--accent)] tnum w-20 text-right">
                     {formatINR(r.price, { compact: true })}
                   </div>
                 </div>

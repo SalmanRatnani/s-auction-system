@@ -31,7 +31,6 @@ export function ChangeNameDialog({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Lock body scroll while open
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -75,16 +74,18 @@ export function ChangeNameDialog({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="surface surface-glow max-w-md w-full mx-4 p-6 space-y-5 animate-scale-in">
+      <div className="rounded-xl border border-[var(--line-2)] bg-[var(--bg-1)] shadow-[0_16px_48px_-12px_rgba(0,0,0,0.7)] max-w-md w-full mx-4 p-6 space-y-5 animate-scale-in">
         <div>
-          <h2 className="text-xl font-display font-bold">Change display name</h2>
-          <p className="text-sm text-white/50 mt-1">
-            This is how your name appears to other users in the auction.
+          <h2 className="text-[18px] font-semibold tracking-tight">
+            Change display name
+          </h2>
+          <p className="text-[13px] text-[var(--fg-3)] mt-1">
+            This is how your name appears to other users.
           </p>
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-medium text-white/60 uppercase tracking-wider">
+          <label className="block text-[11px] font-medium text-[var(--fg-2)] uppercase tracking-[0.08em]">
             Display name
           </label>
           <Input
@@ -97,13 +98,13 @@ export function ChangeNameDialog({
               if (e.key === "Enter") save();
             }}
           />
-          <div className="text-[11px] text-white/40 text-right">
+          <div className="text-[11px] text-[var(--fg-4)] text-right tnum">
             {name.trim().length}/40
           </div>
         </div>
 
         {err && (
-          <div className="text-sm rounded-lg p-3 border bg-red-500/10 border-red-500/30 text-red-300">
+          <div className="text-[13px] rounded-lg p-3 border border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger)]">
             {err}
           </div>
         )}

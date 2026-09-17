@@ -28,16 +28,17 @@ export function GradeChanger({
 
   return (
     <select
-      className="bg-white/5 border border-white/10 rounded text-xs px-1 py-0.5 text-white"
-      value={currentGrade}
-      disabled={saving}
-      onChange={(e) => change(e.target.value)}
-    >
-      {CATEGORY_ORDER.map((c) => (
-        <option key={c} value={c}>
-          {c}
-        </option>
-      ))}
-    </select>
+  className="bg-[var(--bg-2)] border border-[var(--line-1)] rounded text-[11px] px-1.5 py-0.5 text-[var(--fg-1)] tnum focus:outline-none focus:border-[var(--accent-line)]"
+  value={currentGrade ?? ""}
+  disabled={saving}
+  onChange={(e) => change(e.target.value)}
+>
+  <option value="" disabled>—</option>
+  {CATEGORY_ORDER.map((c) => (
+    <option key={c} value={c}>
+      {c}
+    </option>
+  ))}
+</select>
   );
 }

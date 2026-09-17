@@ -35,13 +35,13 @@ export function DeletePlayerButton({
 
   return (
     <button
-      type="button"
-      onClick={handleDelete}
-      disabled={busy}
-      title="Delete player"
-      className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400/70 hover:text-red-300 text-xs px-1"
-    >
-      {busy ? "…" : "✕"}
-    </button>
+  type="button"
+  onClick={handleDelete}
+  disabled={busy}
+  title="Delete player"
+  className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--danger)] hover:opacity-100 text-[11px] font-mono px-1"
+>
+  {busy ? "…" : "×"}
+</button>
   );
 }
