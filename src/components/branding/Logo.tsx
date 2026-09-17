@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 
 export function Logo({
   href = "/dashboard",
@@ -13,18 +12,38 @@ export function Logo({
 
   return (
     <Link href={href} className="flex items-center gap-2.5 group">
-      <span
-        className={`${box} relative rounded-md overflow-hidden transition-transform duration-150 group-hover:scale-[1.03]`}
+      <svg
+        viewBox="0 0 32 32"
+        className={`${box} shrink-0 rounded-md transition-transform duration-150 group-hover:scale-[1.04]`}
+        aria-hidden
       >
-        <Image
-          src="/android-chrome-192x192.png"
-          alt="S Auction System"
-          fill
-          sizes="28px"
-          className="object-cover"
-          priority
-        />
-      </span>
+        <rect width="32" height="32" rx="7" fill="#0F5132" />
+        <text
+          x="16"
+          y="23"
+          textAnchor="middle"
+          fontFamily="Georgia, 'Times New Roman', serif"
+          fontSize="20"
+          fontWeight="900"
+          fill="#C9A227"
+          letterSpacing="-0.5"
+        >
+          S
+        </text>
+        <text
+          x="16"
+          y="22.6"
+          textAnchor="middle"
+          fontFamily="Georgia, 'Times New Roman', serif"
+          fontSize="19"
+          fontWeight="900"
+          fill="#F4EFE0"
+          letterSpacing="-0.5"
+        >
+          S
+        </text>
+        <circle cx="16" cy="7" r="1.6" fill="#F4EFE0" />
+      </svg>
       <span className={`${text} font-semibold tracking-tight text-[var(--fg-1)]`}>
         Auction
       </span>
