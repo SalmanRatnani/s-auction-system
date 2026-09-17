@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -16,8 +17,12 @@ export function ChangeNameDialog({
   const [name, setName] = useState(currentName);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  // Close on Escape
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -25,6 +30,15 @@ export function ChangeNameDialog({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // Lock body scroll while open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
 
   async function save() {
     const trimmed = name.trim();
@@ -52,9 +66,11 @@ export function ChangeNameDialog({
     onSaved();
   }
 
-  return (
+  if (!mounted) return null;
+
+  const modal = (
     <div
-      className="fixed inset-0 z-[200] grid place-items-center bg-black/70 backdrop-blur-md animate-fade-in"
+      className="fixed inset-0 z-[10000] grid place-items-center bg-black/70 backdrop-blur-md animate-fade-in"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -107,4 +123,6 @@ export function ChangeNameDialog({
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }
