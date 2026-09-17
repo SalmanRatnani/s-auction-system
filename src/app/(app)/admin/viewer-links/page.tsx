@@ -17,7 +17,7 @@ export default async function ViewerLinksPage() {
 async function Inner() {
   const supabase = await createClient();
   const auction = await getOrCreateDraftAuction();
-  if (!auction) return <div className="text-red-300">No auction.</div>;
+  if (!auction) return <div className="text-[var(--danger)]">No auction.</div>;
 
   const { data: links } = await supabase
     .from("viewer_links")
@@ -26,15 +26,13 @@ async function Inner() {
     .order("created_at", { ascending: false })
     .limit(20);
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (typeof window === "undefined" ? "" : "");
-
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-3xl animate-fade-up">
       <header>
-        <h1 className="text-3xl font-bold">Viewer Links</h1>
-        <p className="text-white/50 text-sm mt-1">
+        <h1 className="text-[22px] font-semibold tracking-tight">
+          Viewer Links
+        </h1>
+        <p className="text-[13px] text-[var(--fg-3)] mt-1">
           Generate a public link anyone can open — no login needed.
         </p>
       </header>
@@ -47,22 +45,26 @@ async function Inner() {
         </CardHeader>
         <CardBody>
           {!links || links.length === 0 ? (
-            <p className="text-sm text-white/40">No links generated yet.</p>
+            <p className="text-[13px] text-[var(--fg-4)] py-2">
+              No links generated yet.
+            </p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {links.map((l) => {
                 const expired = new Date(l.expires_at) < new Date();
                 return (
                   <div
                     key={l.id}
-                    className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0"
+                    className="flex items-center gap-3 py-2 border-b border-[var(--line-1)] last:border-0"
                   >
-                    <code className="text-xs text-emerald-300 flex-1 truncate">
+                    <code className="text-[11px] text-[var(--accent)] flex-1 truncate font-mono">
                       /watch/{l.token}
                     </code>
                     <span
-                      className={`text-[10px] ${
-                        expired ? "text-red-300" : "text-white/50"
+                      className={`text-[10px] tnum ${
+                        expired
+                          ? "text-[var(--danger)]"
+                          : "text-[var(--fg-4)]"
                       }`}
                     >
                       {expired

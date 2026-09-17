@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Play, Square, RotateCcw, Pause, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 type Auction = {
   id: string;
@@ -11,29 +13,24 @@ type Auction = {
   mode: string;
 };
 
-type Action = "start" | "end" | "reset" | "pause" | "resume";
-
 export function AuctionControls({ auction }: { auction: Auction }) {
   const router = useRouter();
-  const [busy, setBusy] = useState<Action | "mode" | null>(null);
-  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [busy, setBusy] = useState<
+    "start" | "end" | "reset" | "mode" | "pause" | "resume" | null
+  >(null);
+  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(
+    null
+  );
 
-  async function call(action: Action) {
+  async function call(action: "start" | "end" | "reset" | "pause" | "resume") {
     if (action === "reset") {
-      const ok = window.confirm(
+      const confirmed = window.confirm(
         "RESET the auction?\n\n" +
           "This deletes all bids, rosters, purse history, and auction_players rows. " +
           "Teams and player pool are kept. Auction returns to DRAFT."
       );
-      if (!ok) return;
+      if (!confirmed) return;
     }
-    if (action === "end") {
-      const ok = window.confirm(
-        "End the auction? No more bidding will be allowed."
-      );
-      if (!ok) return;
-    }
-
     setBusy(action);
     setMsg(null);
     const res = await fetch(`/api/auction/${auction.id}/${action}`, {
@@ -92,84 +89,85 @@ export function AuctionControls({ auction }: { auction: Auction }) {
   const isDryRun = auction.mode === "DRY_RUN";
 
   return (
-    <Card className={isDryRun ? "border-amber-500/40" : "border-red-500/40"}>
+    <Card
+      className={
+        isDryRun ? "border-[var(--warning-line)]" : "border-[var(--danger-line)]"
+      }
+    >
       <CardHeader>
-        <CardTitle>
-          Controls{" "}
-          <span
-            className={`ml-2 text-xs font-normal px-2 py-0.5 rounded-full border ${
-              isDryRun
-                ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                : "bg-red-500/15 text-red-300 border-red-500/30"
-            }`}
-          >
-            {isDryRun ? "DRY RUN" : "LIVE EVENT"}
-          </span>
-        </CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle>Controls</CardTitle>
+          <Badge tone={isDryRun ? "warning" : "danger"}>
+            {isDryRun ? "Dry run" : "Live event"}
+          </Badge>
+        </div>
       </CardHeader>
       <CardBody className="space-y-4">
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           <Button
             onClick={() => call("start")}
             loading={busy === "start"}
             disabled={!isDraft || busy !== null}
+            size="sm"
           >
+            <Play size={13} strokeWidth={2} />
             Start auction
           </Button>
-
           {isLive && (
             <Button
               variant="outline"
               onClick={() => call("pause")}
               loading={busy === "pause"}
               disabled={busy !== null}
+              size="sm"
             >
-              ⏸ Pause
+              <Pause size={13} strokeWidth={2} />
+              Pause
             </Button>
           )}
-
           {isPaused && (
             <Button
               variant="primary"
               onClick={() => call("resume")}
               loading={busy === "resume"}
               disabled={busy !== null}
+              size="sm"
             >
-              ▶ Resume
+              <Play size={13} strokeWidth={2} />
+              Resume
             </Button>
           )}
-
           <Button
             variant="outline"
             onClick={() => call("end")}
             loading={busy === "end"}
             disabled={(!isLive && !isPaused) || busy !== null}
+            size="sm"
           >
-            End auction
+            <Square size={13} strokeWidth={2} />
+            End
           </Button>
-
           <Button
             variant="danger"
             onClick={() => call("reset")}
             loading={busy === "reset"}
             disabled={busy !== null}
+            size="sm"
           >
-            Reset auction
+            <RotateCcw size={13} strokeWidth={2} />
+            Reset
           </Button>
         </div>
 
-        {!isDraft && (
-          <p className="text-xs text-white/40">
-            Config is locked while the auction is {auction.status.toLowerCase()}. End
-            it to unlock.
-          </p>
-        )}
-
-        <div className="border-t border-white/10 pt-3">
+        <div className="border-t border-[var(--line-1)] pt-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="text-sm text-white/70">
+            <div className="text-[13px] text-[var(--fg-3)]">
               Current mode:{" "}
-              <span className={isDryRun ? "text-amber-300" : "text-red-300"}>
+              <span
+                className={
+                  isDryRun ? "text-[var(--warning)]" : "text-[var(--danger)]"
+                }
+              >
                 {auction.mode}
               </span>
             </div>
@@ -178,12 +176,13 @@ export function AuctionControls({ auction }: { auction: Auction }) {
               size="sm"
               onClick={toggleMode}
               loading={busy === "mode"}
-              disabled={busy !== null || isLive || isPaused}
+              disabled={busy !== null || isLive}
             >
+              <RefreshCw size={13} strokeWidth={2} />
               {isDryRun ? "Switch to LIVE" : "Switch to DRY RUN"}
             </Button>
           </div>
-          <p className="text-xs text-white/40 mt-2">
+          <p className="text-[12px] text-[var(--fg-4)] mt-2 leading-relaxed">
             {isDryRun
               ? "Rehearsal mode. Nothing counts. Run a full rehearsal, then Reset and switch to LIVE for the real event."
               : "Real event. Bids, sales, and purses are final."}
@@ -192,10 +191,10 @@ export function AuctionControls({ auction }: { auction: Auction }) {
 
         {msg && (
           <div
-            className={`text-sm rounded-lg p-3 border ${
+            className={`text-[13px] rounded-lg p-3 border ${
               msg.kind === "err"
-                ? "bg-red-500/10 border-red-500/30 text-red-300"
-                : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                ? "border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger)]"
+                : "border-[var(--success-line)] bg-[var(--success-bg)] text-[var(--success)]"
             }`}
           >
             {msg.text}

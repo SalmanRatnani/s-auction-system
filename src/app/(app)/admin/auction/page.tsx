@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Gavel } from "lucide-react";
 import { RoleGuard } from "@/components/guards/RoleGuard";
 import { Card, CardBody } from "@/components/ui/card";
 import { getOrCreateDraftAuction } from "@/lib/auction";
@@ -17,35 +18,36 @@ export default async function AuctionPage() {
 
 async function Inner() {
   const auction = await getOrCreateDraftAuction();
-  if (!auction) return <div className="text-red-300">No auction.</div>;
+  if (!auction) return <div className="text-[var(--danger)]">No auction.</div>;
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 max-w-5xl animate-fade-up">
       <header className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Auction Control</h1>
-          <p className="text-white/50 text-sm mt-1">
-            {auction.name} · Status:{" "}
-            <span className="text-white/80">{auction.status}</span> · Mode:{" "}
-            <span className="text-white/80">{auction.mode}</span>
+          <h1 className="text-[22px] font-semibold tracking-tight">
+            Auction Control
+          </h1>
+          <p className="text-[13px] text-[var(--fg-3)] mt-1">
+            <span className="text-[var(--fg-1)]">{auction.name}</span> · Status:{" "}
+            <span className="text-[var(--fg-2)]">{auction.status}</span> · Mode:{" "}
+            <span className="text-[var(--fg-2)]">{auction.mode}</span>
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link
-            href="/auctioneer/console"
-            className="text-sm text-emerald-400 hover:text-emerald-300"
-          >
-            Open console →
-          </Link>
-        </div>
+        <Link
+          href="/auctioneer/console"
+          className="inline-flex items-center gap-1.5 text-[13px] text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors"
+        >
+          <Gavel size={13} strokeWidth={2} />
+          Open console
+        </Link>
       </header>
 
       <AuctionControls auction={auction} />
 
       <Card>
-        <CardBody className="text-sm text-white/50">
-          Once LIVE, the auctioneer console becomes active. Config can no
-          longer be edited while LIVE.
+        <CardBody className="text-[13px] text-[var(--fg-3)] p-4">
+          Once live, the auctioneer console becomes active. Config can no longer
+          be edited while the auction is live.
         </CardBody>
       </Card>
 

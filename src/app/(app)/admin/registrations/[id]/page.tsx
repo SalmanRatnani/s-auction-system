@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { RoleGuard } from "@/components/guards/RoleGuard";
@@ -32,7 +33,6 @@ async function Inner({ params }: { params: Promise<{ id: string }> }) {
 
   if (!reg) notFound();
 
-  // Signed URL for the private age proof (60s, controller-only)
   let proofUrl: string | null = null;
   if (reg.age_proof_url) {
     const admin = createAdminClient();
@@ -42,7 +42,6 @@ async function Inner({ params }: { params: Promise<{ id: string }> }) {
     proofUrl = data?.signedUrl ?? null;
   }
 
-  // Look for duplicates — same phone or same name
   const { data: dupes } = await supabase
     .from("registrations")
     .select("id, name, phone, status, submitted_at, image_url, age")
@@ -51,48 +50,46 @@ async function Inner({ params }: { params: Promise<{ id: string }> }) {
     .limit(10);
 
   return (
-    <div className="space-y-6 max-w-5xl">
-      <header className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-4">
-          {reg.image_url && (
-            <img
-              src={reg.image_url}
-              alt=""
-              className="h-20 w-20 rounded-full object-cover border border-white/10"
-            />
-          )}
-          <div>
-            <h1 className="text-3xl font-bold">{reg.name}</h1>
-            <div className="mt-2 flex items-center gap-2">
-              <Badge
-                className={
-                  reg.status === "PENDING"
-                    ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                    : reg.status === "APPROVED"
-                    ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                    : "bg-red-500/15 text-red-300 border-red-500/30"
-                }
-              >
-                {reg.status}
-              </Badge>
-              <span className="text-xs text-white/50">
-                Submitted{" "}
-                {reg.submitted_at
-                  ? new Date(reg.submitted_at).toLocaleString("en-IN")
-                  : "—"}
-              </span>
-            </div>
+    <div className="space-y-6 max-w-5xl animate-fade-up">
+      <header className="flex items-center gap-4 flex-wrap">
+        {reg.image_url && (
+          <img
+            src={reg.image_url}
+            alt=""
+            className="h-16 w-16 rounded-lg object-cover border border-[var(--line-1)]"
+          />
+        )}
+        <div>
+          <h1 className="text-[22px] font-semibold tracking-tight">{reg.name}</h1>
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <Badge
+              tone={
+                reg.status === "PENDING"
+                  ? "warning"
+                  : reg.status === "APPROVED"
+                  ? "success"
+                  : "danger"
+              }
+            >
+              {reg.status.toLowerCase()}
+            </Badge>
+            <span className="text-[11px] text-[var(--fg-4)]">
+              Submitted{" "}
+              {reg.submitted_at
+                ? new Date(reg.submitted_at).toLocaleString("en-IN")
+                : "—"}
+            </span>
           </div>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Form details</CardTitle>
           </CardHeader>
           <CardBody>
-            <dl className="grid grid-cols-2 gap-3 text-sm">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px]">
               <Field label="Full Name" value={reg.name} />
               <Field label="DOB" value={reg.dob} />
               <Field label="Age (auto)" value={reg.age} />
@@ -105,17 +102,17 @@ async function Inner({ params }: { params: Promise<{ id: string }> }) {
               <Field
                 label="Age Proof Type"
                 value={reg.age_proof_type}
-                className="col-span-2"
+                span={2}
               />
               <Field
                 label="Participation History"
                 value={reg.participation_history}
-                className="col-span-2"
+                span={2}
               />
               <Field
                 label="Achievements"
                 value={reg.achievements}
-                className="col-span-2"
+                span={2}
               />
             </dl>
           </CardBody>
@@ -132,34 +129,37 @@ async function Inner({ params }: { params: Promise<{ id: string }> }) {
                   href={proofUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-emerald-400 underline text-sm"
+                  className="inline-flex items-center gap-1.5 text-[13px] text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors"
                 >
-                  Open in new tab →
+                  <ExternalLink size={13} strokeWidth={2} />
+                  Open in new tab
                 </a>
                 {reg.age_proof_url?.endsWith(".pdf") ? (
-                  <div className="text-white/50 text-sm">
+                  <p className="text-[12px] text-[var(--fg-4)]">
                     PDF — opens in new tab.
-                  </div>
+                  </p>
                 ) : (
                   <img
                     src={proofUrl}
                     alt="Age proof"
-                    className="rounded-lg border border-white/10 max-h-96"
+                    className="rounded-lg border border-[var(--line-1)] max-h-96"
                   />
                 )}
-                <p className="text-xs text-white/40">
+                <p className="text-[11px] text-[var(--fg-4)]">
                   Signed URL valid for 60 s. Every access is logged.
                 </p>
               </div>
             ) : (
-              <p className="text-white/40 text-sm">No proof uploaded.</p>
+              <p className="text-[13px] text-[var(--fg-4)]">
+                No proof uploaded.
+              </p>
             )}
           </CardBody>
         </Card>
       </div>
 
       {dupes && dupes.length > 0 && (
-        <Card className="border-amber-500/30">
+        <Card className="border-[var(--warning-line)]">
           <CardHeader>
             <CardTitle>Possible duplicates</CardTitle>
           </CardHeader>
@@ -168,18 +168,28 @@ async function Inner({ params }: { params: Promise<{ id: string }> }) {
               <a
                 key={d.id}
                 href={`/admin/registrations/${d.id}`}
-                className="flex items-center gap-3 text-sm hover:text-emerald-300"
+                className="flex items-center gap-3 text-[13px] hover:text-[var(--accent)] transition-colors py-1"
               >
                 {d.image_url && (
                   <img
                     src={d.image_url}
                     alt=""
-                    className="h-8 w-8 rounded-full"
+                    className="h-7 w-7 rounded-md object-cover"
                   />
                 )}
-                <span>{d.name}</span>
-                <span className="text-white/40">{d.phone}</span>
-                <Badge>{d.status}</Badge>
+                <span className="flex-1 text-[var(--fg-1)]">{d.name}</span>
+                <span className="text-[11px] text-[var(--fg-4)]">{d.phone}</span>
+                <Badge
+                  tone={
+                    d.status === "APPROVED"
+                      ? "success"
+                      : d.status === "PENDING"
+                      ? "warning"
+                      : "danger"
+                  }
+                >
+                  {d.status.toLowerCase()}
+                </Badge>
               </a>
             ))}
           </CardBody>
@@ -198,16 +208,18 @@ async function Inner({ params }: { params: Promise<{ id: string }> }) {
 function Field({
   label,
   value,
-  className,
+  span,
 }: {
   label: string;
   value: unknown;
-  className?: string;
+  span?: 1 | 2;
 }) {
   return (
-    <div className={className}>
-      <dt className="text-white/40 text-xs uppercase tracking-wider">{label}</dt>
-      <dd className="text-white/90 mt-0.5 whitespace-pre-wrap">
+    <div className={span === 2 ? "col-span-2" : undefined}>
+      <dt className="text-[11px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
+        {label}
+      </dt>
+      <dd className="text-[13px] text-[var(--fg-1)] mt-0.5 whitespace-pre-wrap">
         {value == null || value === "" ? "—" : String(value)}
       </dd>
     </div>

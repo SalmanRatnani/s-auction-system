@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +20,9 @@ export function TeamEditor({ team }: { team: Team }) {
   const [name, setName] = useState(team.name);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(
+    null
+  );
 
   async function saveName() {
     setBusy(true);
@@ -65,36 +68,40 @@ export function TeamEditor({ team }: { team: Team }) {
       <CardHeader>
         <CardTitle>Team details</CardTitle>
       </CardHeader>
-      <CardBody className="space-y-4">
+      <CardBody className="space-y-5">
         <div className="flex items-center gap-4">
           {team.logo_url ? (
             <img
               src={team.logo_url}
               alt=""
-              className="h-20 w-20 rounded-xl object-cover border border-white/10"
+              className="h-16 w-16 rounded-lg object-cover border border-[var(--line-1)]"
             />
           ) : (
-            <div className="h-20 w-20 rounded-xl bg-white/5 border border-white/10 grid place-items-center text-2xl">
-              🏸
+            <div className="h-16 w-16 rounded-lg bg-[var(--bg-2)] border border-[var(--line-1)] grid place-items-center text-[var(--fg-4)]">
+              <ImagePlus size={20} strokeWidth={1.5} />
             </div>
           )}
-          <div>
-            <label className="block text-xs text-white/50 mb-1">Team logo</label>
+          <div className="flex-1">
+            <label className="block text-[11px] uppercase tracking-[0.08em] text-[var(--fg-4)] mb-1.5">
+              Team logo
+            </label>
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp"
               onChange={uploadLogo}
               disabled={uploading}
-              className="text-sm text-white/70 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-white/10 file:text-white file:text-sm hover:file:bg-white/20"
+              className="text-[12px] text-[var(--fg-3)] file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-[var(--bg-2)] file:text-[var(--fg-1)] file:text-[12px] hover:file:bg-[var(--bg-3)]"
             />
-            <p className="text-[10px] text-white/40 mt-1">
+            <p className="text-[10px] text-[var(--fg-4)] mt-1">
               PNG / JPEG / WebP · max 2 MB
             </p>
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs text-white/50 mb-1">Team name</label>
+        <div className="space-y-1.5">
+          <label className="block text-[11px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
+            Team name
+          </label>
           <div className="flex gap-2">
             <Input
               value={name}
@@ -112,16 +119,16 @@ export function TeamEditor({ team }: { team: Team }) {
           </div>
         </div>
 
-        <div className="text-xs text-white/50 pt-2 border-t border-white/5">
+        <div className="text-[12px] text-[var(--fg-4)] pt-3 border-t border-[var(--line-1)] tnum">
           Purse: {formatINR(team.initial_purse)}
         </div>
 
         {msg && (
           <div
-            className={`text-sm rounded-lg p-3 border ${
+            className={`text-[13px] rounded-lg p-3 border ${
               msg.kind === "err"
-                ? "bg-red-500/10 border-red-500/30 text-red-300"
-                : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                ? "border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger)]"
+                : "border-[var(--success-line)] bg-[var(--success-bg)] text-[var(--success)]"
             }`}
           >
             {msg.text}
