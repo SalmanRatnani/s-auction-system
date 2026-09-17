@@ -26,7 +26,7 @@ export default async function WatchPage({
         <div className="max-w-md text-center space-y-3">
           <h1 className="text-2xl font-bold">Link expired</h1>
           <p className="text-white/60 text-sm">
-            This spectator link has expired. Ask the auctioneer for a new one.
+            Ask the auctioneer for a new link.
           </p>
         </div>
       </div>
@@ -35,7 +35,11 @@ export default async function WatchPage({
 
   return (
     <main className="min-h-screen p-4 md:p-8">
-      <LiveViewer auctionId={link.auction_id} showPurse={false} />
+      <LiveViewer
+        auctionId={link.auction_id}
+        showPurse={false}
+        teamLinkBase={`/watch/${token}/team`}
+      />
     </main>
   );
 }

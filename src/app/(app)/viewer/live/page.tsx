@@ -22,5 +22,14 @@ async function Inner() {
   const auction = await getOrCreateDraftAuction();
   if (!auction) return <div className="text-red-300">No auction.</div>;
 
-  return <LiveViewer auctionId={auction.id} />;
+  const config = (auction.config ?? {}) as { showPurseToViewers?: boolean };
+  const showPurse = config.showPurseToViewers === true;
+
+  return (
+    <LiveViewer
+      auctionId={auction.id}
+      showPurse={showPurse}
+      teamLinkBase="/viewer/team"
+    />
+  );
 }
