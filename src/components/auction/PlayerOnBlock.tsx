@@ -2,6 +2,7 @@
 
 import { formatINR } from "@/lib/utils";
 import { CATEGORY_COLORS, type Category } from "@/constants/categories";
+import { AnimatedBid } from "@/components/auction/AnimatedBid";
 
 type Team = { id: string; name: string };
 
@@ -92,14 +93,18 @@ export function PlayerOnBlock({
                 {formatINR(basePrice, { compact: true })}
               </div>
             </div>
-            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4">
-              <div className="text-emerald-300/70 text-xs uppercase tracking-wider">
-                Current bid
-              </div>
-              <div className="text-2xl font-bold text-emerald-300 mt-1">
-                {currentBid && currentBid > 0 ? formatINR(currentBid, { compact: true }) : "—"}
-              </div>
-            </div>
+            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4 relative overflow-hidden">
+  <div className="text-emerald-300/70 text-xs uppercase tracking-wider">
+    Current bid
+  </div>
+  <div className="text-2xl font-bold text-emerald-300 mt-1">
+    {currentBid && currentBid > 0 ? (
+      <AnimatedBid amount={currentBid} compact />
+    ) : (
+      "—"
+    )}
+  </div>
+</div>
           </div>
 
           {leader && (
