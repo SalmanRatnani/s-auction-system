@@ -32,7 +32,6 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/captain/bid", label: "Bid", icon: "⚡" },
     { href: "/captain/my-team", label: "My Team", icon: "🛡️" },
     { href: "/captain/teams", label: "All Teams", icon: "👥" },
-    { href: "/viewer/live", label: "Live", icon: "📺" },
     { href: "/dashboard", label: "Dashboard", icon: "🏸" },
   ],
   VIEWER: [

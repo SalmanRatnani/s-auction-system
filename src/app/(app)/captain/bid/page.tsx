@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function CaptainBidPage() {
   return (
-    <RoleGuard allow={["CAPTAIN", "MAIN_CONTROLLER", "AUCTIONEER", "VIEWER"]}>
+    <RoleGuard allow={["CAPTAIN", "MAIN_CONTROLLER", "AUCTIONEER"]}>
       <Inner />
     </RoleGuard>
   );

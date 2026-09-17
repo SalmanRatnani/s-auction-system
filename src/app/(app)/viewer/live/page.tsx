@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ViewerLivePage() {
   return (
-    <RoleGuard allow={["VIEWER", "CAPTAIN", "AUCTIONEER", "MAIN_CONTROLLER"]}>
+    <RoleGuard allow={["VIEWER", "MAIN_CONTROLLER", "AUCTIONEER"]}>
       <Inner />
     </RoleGuard>
   );
