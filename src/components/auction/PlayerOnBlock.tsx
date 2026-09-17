@@ -1,8 +1,8 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { formatINR } from "@/lib/utils";
-import { CATEGORY_COLORS, type Category } from "@/constants/categories";
-import { AnimatedBid } from "@/components/auction/AnimatedBid";
+import { toneForGrade } from "@/constants/categories";
 
 type Team = { id: string; name: string };
 
@@ -29,97 +29,121 @@ export function PlayerOnBlock({
   currentBid: number | null;
   teams?: Team[];
 }) {
-  const gradeClass =
-    CATEGORY_COLORS[player.grade as Category] ??
-    "bg-white/5 text-white/70 border-white/10";
-
-  const leader = highestBid && teams
-    ? teams.find((t) => t.id === highestBid.team_id)
-    : null;
+  const leader =
+    highestBid && teams ? teams.find((t) => t.id === highestBid.team_id) : null;
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-950/60 to-blue-950/60 p-6 md:p-8">
-      <div className="flex flex-col md:flex-row gap-6 items-start">
-        {player.image_url ? (
-          <img
-            src={player.image_url}
-            alt={player.name}
-            className="h-32 w-32 md:h-40 md:w-40 rounded-2xl object-cover border-2 border-emerald-400/40 shadow-2xl shadow-emerald-500/20"
-          />
-        ) : (
-          <div className="h-32 w-32 md:h-40 md:w-40 rounded-2xl bg-white/5 border-2 border-white/10 grid place-items-center text-4xl">
-            🏸
-          </div>
-        )}
+    <div className="rounded-xl border border-[var(--line-1)] bg-[var(--bg-1)] overflow-hidden">
+      <div className="flex flex-col md:flex-row">
+        {/* Photo */}
+        <div className="md:w-[220px] shrink-0 md:border-r border-b md:border-b-0 border-[var(--line-1)] bg-[var(--bg-0)]">
+          {player.image_url ? (
+            <img
+              src={player.image_url}
+              alt={player.name}
+              className="h-48 md:h-full w-full object-cover"
+            />
+          ) : (
+            <div className="h-48 md:h-full w-full grid place-items-center bg-[var(--bg-2)]">
+              <span className="text-[11px] text-[var(--fg-4)] uppercase tracking-widest">
+                No photo
+              </span>
+            </div>
+          )}
+        </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-bold ${gradeClass}`}>
-              {player.grade}
+        {/* Body */}
+        <div className="flex-1 p-6 md:p-8 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge tone={toneForGrade(player.grade)}>{player.grade}</Badge>
+            <span className="text-[11px] font-mono text-[var(--fg-4)] tracking-wide">
+              {player.player_code}
             </span>
-            <span className="text-xs text-white/40 font-mono">{player.player_code}</span>
           </div>
 
-          <h2 className="text-4xl md:text-5xl font-black mt-3 truncate">{player.name}</h2>
+          <h2 className="text-[32px] md:text-[40px] font-semibold tracking-[-0.02em] leading-[1.1] mt-3 truncate">
+            {player.name}
+          </h2>
 
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 mt-6">
             {player.playing_centre && (
-              <div>
-                <div className="text-white/40 text-xs uppercase tracking-wider">Playing centre</div>
-                <div className="text-white/90">{player.playing_centre}</div>
-              </div>
+              <Meta label="Playing centre" value={player.playing_centre} />
             )}
             {player.played_mira_bhayandar !== null && (
-              <div>
-                <div className="text-white/40 text-xs uppercase tracking-wider">Mira Bhayandar</div>
-                <div className="text-white/90">
-                  {player.played_mira_bhayandar ? "Played" : "Not played"}
-                </div>
-              </div>
+              <Meta
+                label="Mira Bhayandar"
+                value={player.played_mira_bhayandar ? "Played" : "Not played"}
+              />
             )}
           </div>
 
           {player.achievements && (
-            <div className="mt-4">
-              <div className="text-white/40 text-xs uppercase tracking-wider mb-1">Achievements</div>
-              <p className="text-white/90 text-sm whitespace-pre-wrap">{player.achievements}</p>
-            </div>
-          )}
-
-          <div className="mt-6 grid grid-cols-2 gap-4">
-            <div className="rounded-xl bg-black/30 border border-white/10 p-4">
-              <div className="text-white/40 text-xs uppercase tracking-wider">Base price</div>
-              <div className="text-2xl font-bold text-white mt-1">
-                {formatINR(basePrice, { compact: true })}
+            <div className="mt-6">
+              <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
+                Achievements
               </div>
+              <p className="text-[13px] text-[var(--fg-2)] mt-1.5 whitespace-pre-wrap leading-relaxed">
+                {player.achievements}
+              </p>
             </div>
-            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4 relative overflow-hidden">
-  <div className="text-emerald-300/70 text-xs uppercase tracking-wider">
-    Current bid
-  </div>
-  <div className="text-2xl font-bold text-emerald-300 mt-1">
-    {currentBid && currentBid > 0 ? (
-      <AnimatedBid amount={currentBid} compact />
-    ) : (
-      "—"
-    )}
-  </div>
-</div>
-          </div>
-
-          {leader && (
-            <p className="text-sm text-emerald-300 mt-3">
-              🏆 Leading: <strong>{leader.name}</strong>
-            </p>
           )}
 
-          {highestBid && (
-            <p className="text-xs text-white/50 mt-1">
-              Placed at {new Date(highestBid.created_at).toLocaleTimeString("en-IN")}
-            </p>
+          {player.participation_history && (
+            <div className="mt-4">
+              <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
+                Participation
+              </div>
+              <p className="text-[13px] text-[var(--fg-3)] mt-1.5 whitespace-pre-wrap leading-relaxed">
+                {player.participation_history}
+              </p>
+            </div>
           )}
         </div>
+
+        {/* Bid panel */}
+        <div className="md:w-[240px] shrink-0 border-t md:border-t-0 md:border-l border-[var(--line-1)] p-5 md:p-6 flex flex-col gap-5 bg-[var(--bg-0)]">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
+              Base price
+            </div>
+            <div className="text-[20px] font-medium text-[var(--fg-1)] mt-1.5 tnum">
+              {formatINR(basePrice, { compact: true })}
+            </div>
+          </div>
+
+          <div className="border-t border-[var(--line-1)] pt-5">
+            <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--accent)]">
+              Current bid
+            </div>
+            <div className="text-[32px] md:text-[36px] font-semibold text-[var(--accent)] mt-1.5 tnum leading-none">
+              {currentBid && currentBid > 0
+                ? formatINR(currentBid, { compact: true })
+                : "—"}
+            </div>
+            {leader && (
+              <div className="text-[12px] text-[var(--fg-3)] mt-2 truncate">
+                Leading: <span className="text-[var(--fg-1)]">{leader.name}</span>
+              </div>
+            )}
+            {highestBid && (
+              <div className="text-[11px] text-[var(--fg-4)] mt-1 tabular-nums">
+                {new Date(highestBid.created_at).toLocaleTimeString("en-IN")}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function Meta({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
+        {label}
+      </div>
+      <div className="text-[13px] text-[var(--fg-1)] mt-0.5">{value}</div>
     </div>
   );
 }

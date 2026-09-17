@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatINR } from "@/lib/utils";
-import { CATEGORY_COLORS, type Category } from "@/constants/categories";
+import { toneForGrade } from "@/constants/categories";
 
 export type TeamDetailData = {
   id: string;
@@ -134,14 +134,7 @@ export function TeamDetail({
                         : ""}
                     </div>
                   </div>
-                  <Badge
-                    className={
-                      CATEGORY_COLORS[r.player.grade as Category] ??
-                      "bg-white/5 text-white/70 border-white/10"
-                    }
-                  >
-                    {r.player.grade}
-                  </Badge>
+                  <Badge tone={toneForGrade(r.player.grade)}>{r.player.grade}</Badge>
                   <div className="text-sm font-mono text-emerald-300 w-24 text-right">
                     {formatINR(r.price, { compact: true })}
                   </div>
