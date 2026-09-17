@@ -7,6 +7,14 @@ import { Card, CardBody } from "@/components/ui/card";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
 import { CategoryPicker } from "@/components/auction/CategoryPicker";
 import { DEFAULT_BASE_PRICES, type Category } from "@/constants/categories";
+import {
+  Pause,
+  Play,
+  RotateCcw,
+  Check,
+  Undo2,
+  X,
+} from "lucide-react";
 
 export function ConsoleClient({ auctionId }: { auctionId: string }) {
   const { state, loading, refresh } = useAuctionState(auctionId, 1500);
@@ -15,14 +23,14 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
   >(null);
   const [err, setErr] = useState<string | null>(null);
 
-  if (loading || !state)
-    return <div className="text-white/50">Loading auction…</div>;
+  if (loading || !state) {
+    return <div className="text-[13px] text-[var(--fg-3)]">Loading auction…</div>;
+  }
 
   const { auction, current, highestBid, counts, teams } = state;
   const isLive = auction?.status === "LIVE";
   const isPaused = auction?.status === "PAUSED";
   const hasCurrent = !!current;
-
   const basePrice =
     current?.player?.grade != null
       ? DEFAULT_BASE_PRICES[current.player.grade as Category] ?? 0
@@ -61,24 +69,26 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6 max-w-6xl animate-fade-up">
       <header className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Auctioneer Console</h1>
-          <p className="text-white/50 text-sm mt-1">
+          <h1 className="text-[22px] font-semibold tracking-tight">
+            Auction Console
+          </h1>
+          <p className="text-[13px] text-[var(--fg-3)] mt-1">
             {auction?.name} ·{" "}
             <span
               className={
                 isLive
-                  ? "text-emerald-300"
+                  ? "text-[var(--success)]"
                   : isPaused
-                  ? "text-amber-300"
-                  : "text-white/70"
+                  ? "text-[var(--warning)]"
+                  : "text-[var(--fg-3)]"
               }
             >
               {auction?.status}
             </span>{" "}
-            · <span className="text-white/40">{auction?.mode}</span>
+            · <span className="text-[var(--fg-4)]">{auction?.mode}</span>
           </p>
         </div>
 
@@ -91,7 +101,8 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
               loading={busy === "pause"}
               disabled={busy !== null}
             >
-              ⏸ Pause
+              <Pause size={13} strokeWidth={2} />
+              Pause
             </Button>
           )}
           {isPaused && (
@@ -102,7 +113,8 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
               loading={busy === "resume"}
               disabled={busy !== null}
             >
-              ▶ Resume
+              <Play size={13} strokeWidth={2} />
+              Resume
             </Button>
           )}
           <Button
@@ -112,35 +124,36 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
               call(
                 "round2",
                 "round2",
-                "Re-queue all unsold players?\n\nThey'll become available for a second round of bidding."
+                "Re-queue all unsold players?\n\nThey'll become available for a second round."
               )
             }
             loading={busy === "round2"}
             disabled={busy !== null}
           >
-            🔄 Round 2
+            <RotateCcw size={13} strokeWidth={2} />
+            Round 2
           </Button>
         </div>
       </header>
 
       {!isLive && !isPaused && (
-        <Card className="border-amber-500/30">
-          <CardBody className="text-sm text-amber-300">
-            Auction is not LIVE. Start it from <strong>Auction Control</strong>.
+        <Card className="border-[var(--warning-line)] bg-[var(--warning-bg)]">
+          <CardBody className="text-[13px] text-[var(--warning)] p-4">
+            Auction is not live. Start it from Auction Control.
           </CardBody>
         </Card>
       )}
 
       {isPaused && (
-        <Card className="border-amber-500/40">
-          <CardBody className="text-sm text-amber-300">
-            ⏸ Auction is PAUSED. Resume to continue drawing and selling.
+        <Card className="border-[var(--warning-line)] bg-[var(--warning-bg)]">
+          <CardBody className="text-[13px] text-[var(--warning)] p-4">
+            Auction is paused. Resume to continue.
           </CardBody>
         </Card>
       )}
 
       {err && (
-        <div className="text-sm rounded-lg p-3 border bg-red-500/10 border-red-500/30 text-red-300">
+        <div className="text-[13px] rounded-lg p-3 border border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger)]">
           {err}
         </div>
       )}
@@ -152,16 +165,17 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
             highestBid={highestBid}
             basePrice={basePrice}
             currentBid={currentBid}
-            teams={teams}
+            teams={teams.map((t) => ({ id: t.id, name: t.name }))}
           />
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             <Button
               onClick={() => call("sell", "sell")}
               loading={busy === "sell"}
               disabled={busy !== null || !highestBid || !isLive}
             >
-              ✅ Sell to{" "}
+              <Check size={14} strokeWidth={2} />
+              Sell to{" "}
               {teams.find((t) => t.id === highestBid?.team_id)?.name ?? "…"}
             </Button>
             <Button
@@ -170,7 +184,8 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
               loading={busy === "undo"}
               disabled={busy !== null || !highestBid}
             >
-              ↶ Undo last bid
+              <Undo2 size={14} strokeWidth={2} />
+              Undo last bid
             </Button>
             <Button
               variant="danger"
@@ -178,13 +193,14 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
               loading={busy === "unsold"}
               disabled={busy !== null || !isLive}
             >
+              <X size={14} strokeWidth={2} />
               Mark unsold
             </Button>
           </div>
         </div>
       ) : (
         <Card>
-          <CardBody className="text-white/50 text-sm py-12 text-center">
+          <CardBody className="text-[13px] text-[var(--fg-3)] py-16 text-center">
             {isLive
               ? "No player on the block. Pick a category below to draw one."
               : isPaused
@@ -195,7 +211,11 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
       )}
 
       {isLive && (
-        <CategoryPicker counts={counts} disabled={hasCurrent} onDraw={drawNext} />
+        <CategoryPicker
+          counts={counts}
+          disabled={hasCurrent}
+          onDraw={drawNext}
+        />
       )}
     </div>
   );

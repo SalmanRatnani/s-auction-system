@@ -2,12 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { useAuctionState } from "@/hooks/useAuctionState";
+import { useBidAlerts, unlockAudio } from "@/hooks/useBidAlerts";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
-import { DEFAULT_BASE_PRICES, DEFAULT_INCREMENT_PAISE, type Category } from "@/constants/categories";
+import {
+  DEFAULT_BASE_PRICES,
+  DEFAULT_INCREMENT_PAISE,
+  type Category,
+} from "@/constants/categories";
 import { formatINR } from "@/lib/utils";
-import { unlockAudio, useBidAlerts } from "@/hooks/useBidAlerts";
+import { Check } from "lucide-react";
 
 export function BidClient({
   auctionId,
@@ -16,12 +21,12 @@ export function BidClient({
   auctionId: string;
   userId: string;
 }) {
-  const { state, loading, refresh } = useAuctionState(auctionId, 1500); // 3s polling fallback
+  const { state, loading, refresh } = useAuctionState(auctionId, 1500);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(
+    null
+  );
 
-  // Trigger sound + vibration when a new bid arrives from someone else
-    // Hooks must run unconditionally, before any early return.
   useBidAlerts(state?.highestBid?.id ?? null);
 
   useEffect(() => {
@@ -30,7 +35,9 @@ export function BidClient({
     return () => clearTimeout(t);
   }, [msg]);
 
-  if (loading || !state) return <div className="text-white/50">Loading…</div>;
+  if (loading || !state) {
+    return <div className="text-[13px] text-[var(--fg-3)]">Loading…</div>;
+  }
 
   const { auction, current, highestBid, teams } = state;
   const isLive = auction?.status === "LIVE";
@@ -51,7 +58,6 @@ export function BidClient({
   const isMyLead = highestBid && myTeam && highestBid.team_id === myTeam.id;
 
   const nextBid = currentBid === 0 ? basePrice : currentBid + increment;
-
   const purseAfter = myTeam ? myTeam.remaining_purse - nextBid : 0;
   const purseOk = myTeam && purseAfter >= 0;
   const squadOk = myTeam ? myTeam.squad_count < maxSquad : false;
@@ -77,30 +83,26 @@ export function BidClient({
   }
 
   const cannotBid =
-    !isLive ||
-    !current ||
-    !myTeam ||
-    !purseOk ||
-    !squadOk ||
-    isMyLead ||
-    busy;
+    !isLive || !current || !myTeam || !purseOk || !squadOk || isMyLead || busy;
 
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="max-w-3xl space-y-4 animate-fade-up">
       <header className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Bid</h1>
-          <p className="text-white/50 text-sm mt-1">
-            {myTeam ? `You are: ${myTeam.name}` : "You have no team assigned."}
+          <h1 className="text-[22px] font-semibold tracking-tight">Bid</h1>
+          <p className="text-[13px] text-[var(--fg-3)] mt-1">
+            {myTeam ? myTeam.name : "No team assigned"}
           </p>
         </div>
         {myTeam && (
           <div className="text-right">
-            <div className="text-xs text-white/50 uppercase tracking-wider">Your purse</div>
-            <div className="text-lg md:text-xl font-bold text-emerald-300">
+            <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
+              Your purse
+            </div>
+            <div className="text-[18px] font-semibold text-[var(--accent)] tnum">
               {formatINR(myTeam.remaining_purse, { compact: true })}
             </div>
-            <div className="text-xs text-white/40">
+            <div className="text-[11px] text-[var(--fg-4)] tnum">
               {myTeam.squad_count}/{maxSquad} players
             </div>
           </div>
@@ -108,8 +110,8 @@ export function BidClient({
       </header>
 
       {!myTeam && (
-        <Card className="border-amber-500/30">
-          <CardBody className="text-sm text-amber-300">
+        <Card className="border-[var(--warning-line)] bg-[var(--warning-bg)]">
+          <CardBody className="text-[13px] text-[var(--warning)] p-4">
             You are not assigned to a team yet. Contact the Main Controller.
           </CardBody>
         </Card>
@@ -117,10 +119,10 @@ export function BidClient({
 
       {msg && (
         <div
-          className={`text-sm rounded-lg p-3 border ${
+          className={`text-[13px] rounded-lg p-3 border ${
             msg.kind === "err"
-              ? "bg-red-500/10 border-red-500/30 text-red-300"
-              : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+              ? "border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger)]"
+              : "border-[var(--success-line)] bg-[var(--success-bg)] text-[var(--success)]"
           }`}
         >
           {msg.text}
@@ -134,53 +136,60 @@ export function BidClient({
             highestBid={highestBid}
             basePrice={basePrice}
             currentBid={currentBid}
-            teams={teams}
+            teams={teams.map((t) => ({ id: t.id, name: t.name }))}
           />
 
           {isMyLead && (
-            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-center">
-              <div className="text-emerald-300 font-semibold">
-                🏆 You're the highest bidder
+            <div className="rounded-lg border border-[var(--success-line)] bg-[var(--success-bg)] p-4 text-center">
+              <div className="flex items-center justify-center gap-2 text-[13px] text-[var(--success)] font-medium">
+                <Check size={14} strokeWidth={2.5} />
+                You are the highest bidder
               </div>
-              <p className="text-xs text-emerald-300/70 mt-1">
+              <p className="text-[12px] text-[var(--success)] opacity-70 mt-1">
                 Wait for the auctioneer to confirm the sale.
               </p>
             </div>
           )}
 
           {!isMyLead && isLive && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               <Button
                 onClick={() => placeBid(nextBid)}
                 disabled={cannotBid}
                 loading={busy}
                 size="lg"
-                className="col-span-2 md:col-span-1 h-16 text-base"
+                className="col-span-2 md:col-span-1 h-16 text-[15px]"
               >
-                BID {formatINR(nextBid, { compact: true })}
+                Bid {formatINR(nextBid, { compact: true })}
               </Button>
               <Button
                 variant="outline"
                 size="lg"
-                className="h-16"
+                className="h-16 text-[13px]"
                 onClick={() => placeBid(nextBid + increment)}
                 disabled={cannotBid}
               >
-                +2× · {formatINR(nextBid + increment, { compact: true })}
+                +2×
+                <span className="block text-[11px] text-[var(--fg-3)] tnum">
+                  {formatINR(nextBid + increment, { compact: true })}
+                </span>
               </Button>
               <Button
                 variant="outline"
                 size="lg"
-                className="h-16"
+                className="h-16 text-[13px]"
                 onClick={() => placeBid(nextBid + increment * 4)}
                 disabled={cannotBid}
               >
-                +5× · {formatINR(nextBid + increment * 4, { compact: true })}
+                +5×
+                <span className="block text-[11px] text-[var(--fg-3)] tnum">
+                  {formatINR(nextBid + increment * 4, { compact: true })}
+                </span>
               </Button>
               <Button
                 variant="outline"
                 size="lg"
-                className="h-16"
+                className="h-16 text-[13px]"
                 onClick={() => {
                   const input = window.prompt(
                     `Enter bid amount in ₹ (min ${(nextBid / 100).toFixed(0)})`,
@@ -199,19 +208,19 @@ export function BidClient({
           )}
 
           {!purseOk && myTeam && (
-            <p className="text-xs text-red-300">
+            <p className="text-[12px] text-[var(--danger)]">
               Insufficient purse for the next minimum bid.
             </p>
           )}
           {!squadOk && myTeam && (
-            <p className="text-xs text-red-300">
+            <p className="text-[12px] text-[var(--danger)]">
               Your squad is full ({maxSquad} players).
             </p>
           )}
         </>
       ) : (
         <Card>
-          <CardBody className="text-white/50 text-sm py-12 text-center">
+          <CardBody className="text-[13px] text-[var(--fg-3)] py-16 text-center">
             {isLive
               ? "Waiting for a player to be drawn…"
               : "Auction not live yet."}
