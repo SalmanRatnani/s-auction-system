@@ -7,7 +7,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
 import { DEFAULT_BASE_PRICES, DEFAULT_INCREMENT_PAISE, type Category } from "@/constants/categories";
 import { formatINR } from "@/lib/utils";
-import { useBidAlerts } from "@/hooks/useBidAlerts";
+import { unlockAudio, useBidAlerts } from "@/hooks/useBidAlerts";
 
 export function BidClient({
   auctionId,
@@ -57,6 +57,7 @@ export function BidClient({
   const squadOk = myTeam ? myTeam.squad_count < maxSquad : false;
 
   async function placeBid(amount: number) {
+    unlockAudio();
     if (!current) return;
     setBusy(true);
     setMsg(null);
