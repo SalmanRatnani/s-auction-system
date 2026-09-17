@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function CreateTeamButton({ disabled }: { disabled: boolean }) {
@@ -21,8 +22,9 @@ export function CreateTeamButton({ disabled }: { disabled: boolean }) {
   }
 
   return (
-    <Button onClick={create} loading={busy} disabled={disabled}>
-      + Create team
+    <Button onClick={create} loading={busy} disabled={disabled} size="sm">
+      <Plus size={14} strokeWidth={2} />
+      Create team
     </Button>
   );
 }

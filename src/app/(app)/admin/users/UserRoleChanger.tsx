@@ -38,7 +38,7 @@ export function UserRoleChanger({
       value={currentRole}
       disabled={busy}
       onChange={(e) => change(e.target.value)}
-      className="bg-white/5 border border-white/10 rounded text-xs px-2 py-1 text-white"
+      className="bg-[var(--bg-2)] border border-[var(--line-1)] rounded-md text-[11px] px-2 py-1 text-[var(--fg-1)] focus:outline-none focus:border-[var(--accent-line)]"
     >
       {ROLES.map((r) => (
         <option key={r} value={r}>

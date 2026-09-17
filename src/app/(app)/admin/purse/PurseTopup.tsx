@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function PurseTopup({
@@ -51,7 +52,8 @@ export function PurseTopup({
         disabled={busy !== null}
         className="flex-1"
       >
-        + Add funds
+        <Plus size={12} strokeWidth={2.5} />
+        Add funds
       </Button>
       <Button
         size="sm"
@@ -60,7 +62,7 @@ export function PurseTopup({
         loading={busy === "sub"}
         disabled={busy !== null}
       >
-        −
+        <Minus size={12} strokeWidth={2.5} />
       </Button>
     </div>
   );

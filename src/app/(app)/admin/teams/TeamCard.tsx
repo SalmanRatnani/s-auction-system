@@ -62,29 +62,33 @@ export function TeamCard({ team, users }: { team: Team; users: User[] }) {
 
   return (
     <Card>
-      <CardBody className="space-y-3">
+      <CardBody className="space-y-4">
         <div className="flex items-center gap-3">
           {team.logo_url ? (
             <img
               src={team.logo_url}
               alt=""
-              className="h-14 w-14 rounded-lg object-cover border border-white/10"
+              className="h-12 w-12 rounded-lg object-cover border border-[var(--line-1)]"
             />
           ) : (
-            <div className="h-14 w-14 rounded-lg bg-white/5 border border-white/10 grid place-items-center text-white/30">
-              🏸
+            <div className="h-12 w-12 rounded-lg bg-[var(--bg-2)] border border-[var(--line-1)] grid place-items-center text-[10px] font-mono text-[var(--fg-4)]">
+              {team.name.slice(0, 2).toUpperCase()}
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <div className="text-sm text-white/50">Captain</div>
-            <div className="font-medium truncate">
+            <div className="text-[11px] text-[var(--fg-4)] uppercase tracking-[0.08em]">
+              Captain
+            </div>
+            <div className="text-[13px] text-[var(--fg-1)] font-medium truncate mt-0.5">
               {captain ? captain.display_name ?? captain.email : "— unassigned —"}
             </div>
           </div>
         </div>
 
         <div>
-          <label className="block text-xs text-white/50 mb-1">Team name</label>
+          <label className="block text-[11px] text-[var(--fg-4)] uppercase tracking-[0.08em] mb-1.5">
+            Team name
+          </label>
           <div className="flex gap-2">
             <Input
               value={name}
@@ -103,14 +107,14 @@ export function TeamCard({ team, users }: { team: Team; users: User[] }) {
         </div>
 
         <div>
-          <label className="block text-xs text-white/50 mb-1">Assign captain</label>
+          <label className="block text-[11px] text-[var(--fg-4)] uppercase tracking-[0.08em] mb-1.5">
+            Assign captain
+          </label>
           <select
             value={team.captain_user_id ?? ""}
             disabled={busy}
-            onChange={(e) =>
-              patch({ captain_user_id: e.target.value || null })
-            }
-            className="h-10 w-full rounded-lg bg-white/5 border border-white/10 px-3 text-sm text-white"
+            onChange={(e) => patch({ captain_user_id: e.target.value || null })}
+            className="h-9 w-full rounded-lg bg-[var(--bg-1)] border border-[var(--line-1)] px-3 text-[13px] text-[var(--fg-1)] focus:outline-none focus:border-[var(--accent-line)]"
           >
             <option value="">— none —</option>
             {users.map((u) => (
@@ -119,24 +123,26 @@ export function TeamCard({ team, users }: { team: Team; users: User[] }) {
               </option>
             ))}
           </select>
-          <p className="text-[10px] text-white/40 mt-1">
+          <p className="text-[10px] text-[var(--fg-4)] mt-1.5">
             Assigning a captain upgrades their role automatically.
           </p>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-white/50 pt-2 border-t border-white/5">
-          <span>Purse: {formatINR(team.initial_purse, { compact: true })}</span>
+        <div className="flex items-center justify-between text-[11px] pt-3 border-t border-[var(--line-1)]">
+          <span className="text-[var(--fg-3)] tnum">
+            Purse: {formatINR(team.initial_purse, { compact: true })}
+          </span>
           <button
             onClick={remove}
             disabled={busy}
-            className="text-red-400/80 hover:text-red-300"
+            className="text-[var(--danger)] hover:opacity-80 transition-opacity"
           >
             Delete team
           </button>
         </div>
 
         {err && (
-          <div className="text-xs rounded p-2 border bg-red-500/10 border-red-500/30 text-red-300">
+          <div className="text-[12px] rounded-lg p-2 border border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger)]">
             {err}
           </div>
         )}
