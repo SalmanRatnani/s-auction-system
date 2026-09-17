@@ -1,11 +1,12 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Logo } from "@/components/branding/Logo";
 
 type Mode = "signin" | "signup" | "magic" | "otp";
 
@@ -22,24 +23,17 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") ?? "/dashboard";
-  const initialMode = (params.get("mode") as Mode) ?? "signin";
+  const reason = params.get("reason");
 
-  const [mode, setMode] = useState<Mode>(initialMode);
+  const [mode, setMode] = useState<Mode>(
+    (params.get("mode") as Mode) ?? "signin"
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
   const [code, setCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
-
-  useEffect(() => {
-    const m = params.get("mode") as Mode | null;
-    if (m && m !== mode) setMode(m);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params]);
-
-  const redirectTo = (path: string) =>
-    `${window.location.origin}/auth/callback?next=${encodeURIComponent(path)}`;
+  const [msg, setMsg] = useState<{ kind: "err" | "ok"; text: string } | null>(null);
 
   function resetForMode(m: Mode) {
     setMode(m);
@@ -48,6 +42,9 @@ function LoginForm() {
     setCode("");
   }
 
+  const redirectTo = (path: string) =>
+    `${window.location.origin}/auth/callback?next=${encodeURIComponent(path)}`;
+
   async function handleGoogle() {
     setLoading(true);
     setMsg(null);
@@ -55,7 +52,7 @@ function LoginForm() {
       provider: "google",
       options: { redirectTo: redirectTo(next) },
     });
-    if (error) setMsg({ type: "error", text: error.message });
+    if (error) setMsg({ kind: "err", text: error.message });
     setLoading(false);
   }
 
@@ -69,14 +66,11 @@ function LoginForm() {
     });
     setLoading(false);
     if (error) {
-      setMsg({ type: "error", text: error.message });
+      setMsg({ kind: "err", text: error.message });
       return;
     }
     setOtpSent(true);
-    setMsg({
-      type: "success",
-      text: `Code sent to ${email}. Check your inbox (and spam).`,
-    });
+    setMsg({ kind: "ok", text: `Code sent to ${email}` });
   }
 
   async function handleVerifyOtp(e: React.FormEvent) {
@@ -90,7 +84,7 @@ function LoginForm() {
     });
     setLoading(false);
     if (error) {
-      setMsg({ type: "error", text: error.message });
+      setMsg({ kind: "err", text: error.message });
       return;
     }
     router.push(next);
@@ -108,248 +102,170 @@ function LoginForm() {
         password,
         options: { emailRedirectTo: redirectTo(next) },
       });
-      if (error) setMsg({ type: "error", text: error.message });
-      else
-        setMsg({
-          type: "success",
-          text: "Check your email to confirm your account.",
-        });
+      if (error) setMsg({ kind: "err", text: error.message });
+      else setMsg({ kind: "ok", text: "Check your email to confirm your account." });
     } else if (mode === "signin") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setMsg({ type: "error", text: error.message });
+      if (error) setMsg({ kind: "err", text: error.message });
       else {
         router.push(next);
         router.refresh();
       }
     } else {
-      // magic link
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: { emailRedirectTo: redirectTo(next) },
       });
-      if (error) setMsg({ type: "error", text: error.message });
-      else
-        setMsg({
-          type: "success",
-          text: "Magic link sent. Check your inbox.",
-        });
+      if (error) setMsg({ kind: "err", text: error.message });
+      else setMsg({ kind: "ok", text: "Magic link sent. Check your inbox." });
     }
     setLoading(false);
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* LEFT — brand panel */}
-      <aside className="hidden lg:flex w-1/2 xl:w-[55%] relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-950 via-emerald-900/40 to-blue-950" />
-        <div
-          className="absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
-            backgroundSize: "64px 64px",
-          }}
-        />
-        <div className="absolute -top-40 -left-40 h-[600px] w-[600px] rounded-full bg-emerald-500/10 blur-[120px]" />
-        <div className="absolute -bottom-40 -right-20 h-[500px] w-[500px] rounded-full bg-amber-500/5 blur-[120px]" />
-
-        <div className="relative z-10 flex flex-col justify-between p-12 xl:p-16 w-full">
-          <Link href="/" className="flex items-center gap-3 group w-fit">
-            <span className="text-3xl leading-none transition-transform group-hover:rotate-12">
-              🏸
-            </span>
-            <span className="text-xl font-display font-black tracking-tight">
-              S Auction <span className="text-emerald-400">System</span>
-            </span>
-          </Link>
-
-          <div className="space-y-8 animate-slide-up">
-            <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs text-emerald-300">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Live auction platform
-              </div>
-              <h1 className="text-5xl xl:text-6xl font-display font-black tracking-tight leading-[1.05]">
-                Where <span className="text-gradient">champions</span> are made.
-              </h1>
-              <p className="text-lg text-white/60 leading-relaxed max-w-lg">
-                Realtime bidding, live purse tracking, and instant roster
-                updates. Built for badminton tournaments that move fast.
-              </p>
-            </div>
-            <div className="space-y-3 pt-2">
-              <Bullet icon="⚡" text="Sub-second bid placement" />
-              <Bullet icon="💰" text="Live purse tracking for every captain" />
-              <Bullet icon="📺" text="Public spectator links + projector view" />
-            </div>
-          </div>
-
-          <div className="text-xs text-white/30 font-mono">
-            S Auction System · v0.1
-          </div>
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
+      <div className="w-full max-w-[380px]">
+        <div className="flex justify-center mb-8 animate-fade-up">
+          <Logo href="/" />
         </div>
-      </aside>
 
-      {/* RIGHT — form */}
-      <main className="flex-1 flex items-center justify-center p-6 md:p-12 relative">
-        <div className="absolute inset-0 lg:hidden bg-court -z-10" />
-
-        <div className="w-full max-w-md">
-          <Link
-            href="/"
-            className="lg:hidden flex items-center justify-center gap-2 mb-8 group"
-          >
-            <span className="text-3xl">🏸</span>
-            <span className="text-xl font-display font-black tracking-tight">
-              S Auction <span className="text-emerald-400">System</span>
-            </span>
-          </Link>
-
-          <div className="mb-8 animate-slide-up">
-            <h2 className="text-3xl font-display font-bold tracking-tight">
-              {mode === "signin"
-                ? "Welcome back"
-                : mode === "signup"
-                ? "Create your account"
-                : mode === "magic"
-                ? "Sign in with a link"
-                : otpSent
+        <div className="animate-fade-up delay-50">
+          <h1 className="text-[22px] font-semibold tracking-tight text-center">
+            {mode === "signup"
+              ? "Create your account"
+              : mode === "otp"
+              ? otpSent
                 ? "Enter your code"
-                : "Sign in with a code"}
-            </h2>
-            <p className="text-sm text-white/50 mt-2">
-              {mode === "signin"
-                ? "Sign in to continue to the auction."
-                : mode === "signup"
-                ? "Use the same email you registered with."
-                : mode === "magic"
-                ? "We'll send a one-time link to your email."
-                : otpSent
+                : "Sign in with a code"
+              : mode === "magic"
+              ? "Sign in with a link"
+              : "Welcome back"}
+          </h1>
+          <p className="text-[13px] text-[var(--fg-3)] text-center mt-2">
+            {mode === "signup"
+              ? "Use the email you registered with."
+              : mode === "otp"
+              ? otpSent
                 ? `We sent a 6-digit code to ${email}`
-                : "We'll email you a 6-digit code."}
-            </p>
-          </div>
+                : "We'll email you a 6-digit code."
+              : mode === "magic"
+              ? "We'll email you a one-time link."
+              : "Sign in to continue."}
+          </p>
+        </div>
 
-          <div className="animate-slide-up delay-100">
-            <Button
-              type="button"
-              variant="secondary"
-              size="lg"
-              className="w-full !bg-white !text-neutral-900 hover:!bg-white/90 !font-semibold"
-              onClick={handleGoogle}
-              disabled={loading}
-            >
-              <GoogleIcon />
-              Continue with Google
-            </Button>
+        {reason === "timeout" && (
+          <div className="mt-6 text-[12px] rounded-lg p-3 border border-[var(--warning-line)] bg-[var(--warning-bg)] text-[var(--warning)] animate-fade-down">
+            Signed out due to inactivity.
           </div>
-
-          <div className="flex items-center gap-4 my-6 animate-fade-in delay-200">
-            <span className="flex-1 h-px bg-white/10" />
-            <span className="text-xs text-white/40 uppercase tracking-widest">or</span>
-            <span className="flex-1 h-px bg-white/10" />
+        )}
+        {reason === "auction-ended" && (
+          <div className="mt-6 text-[12px] rounded-lg p-3 border border-[var(--info-line)] bg-[var(--info-bg)] text-[var(--info)] animate-fade-down">
+            The auction has ended.
           </div>
+        )}
 
-          {/* ==== OTP MODE ==== */}
+        <div className="mt-8 animate-fade-up delay-100">
+          <Button
+            type="button"
+            variant="secondary"
+            size="lg"
+            className="w-full"
+            onClick={handleGoogle}
+            disabled={loading}
+          >
+            <GoogleIcon />
+            Continue with Google
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-3 my-6 animate-fade-up delay-100">
+          <span className="flex-1 h-px bg-[var(--line-1)]" />
+          <span className="text-[10px] text-[var(--fg-4)] uppercase tracking-widest">or</span>
+          <span className="flex-1 h-px bg-[var(--line-1)]" />
+        </div>
+
+        <div className="animate-fade-up delay-150">
           {mode === "otp" ? (
             otpSent ? (
-              <form onSubmit={handleVerifyOtp} className="space-y-4 animate-slide-up">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-medium text-white/60 uppercase tracking-wider">
-                    6-digit code
-                  </label>
-                  <Input
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={6}
-                    placeholder="123456"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                    autoFocus
-                    className="text-center text-2xl tracking-[0.5em] font-mono h-14"
-                    required
-                  />
-                </div>
+              <form onSubmit={handleVerifyOtp} className="space-y-3">
+                <Input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                  autoFocus
+                  className="text-center text-lg tracking-[0.4em] font-mono h-12"
+                  required
+                />
                 <Button type="submit" size="lg" className="w-full" loading={loading}>
-                  Verify & sign in
+                  Verify
                 </Button>
-                <div className="flex items-center justify-between text-xs text-white/50 pt-1">
+                <div className="flex justify-between text-[12px] text-[var(--fg-3)] pt-1">
                   <button
                     type="button"
-                    onClick={() => {
-                      setOtpSent(false);
-                      setCode("");
-                      setMsg(null);
-                    }}
-                    className="hover:text-white"
+                    onClick={() => { setOtpSent(false); setCode(""); setMsg(null); }}
+                    className="hover:text-[var(--fg-1)]"
                   >
-                    ← Change email
+                    Change email
                   </button>
                   <button
                     type="button"
                     onClick={handleSendOtp}
                     disabled={loading}
-                    className="hover:text-white"
+                    className="hover:text-[var(--fg-1)]"
                   >
-                    Resend code
+                    Resend
                   </button>
                 </div>
               </form>
             ) : (
-              <form onSubmit={handleSendOtp} className="space-y-4 animate-slide-up">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-medium text-white/60 uppercase tracking-wider">
-                    Email
-                  </label>
+              <form onSubmit={handleSendOtp} className="space-y-3">
+                <Field label="Email">
                   <Input
                     type="email"
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="email"
-                    autoFocus
                     required
+                    autoFocus
                   />
-                </div>
+                </Field>
                 <Button type="submit" size="lg" className="w-full" loading={loading}>
                   Send code
                 </Button>
               </form>
             )
           ) : (
-            /* ==== PASSWORD / SIGNUP / MAGIC ==== */
-            <form onSubmit={handleEmail} className="space-y-4 animate-slide-up delay-200">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-white/60 uppercase tracking-wider">
-                  Email
-                </label>
+            <form onSubmit={handleEmail} className="space-y-3">
+              <Field label="Email">
                 <Input
                   type="email"
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  autoComplete="email"
                   autoFocus
                 />
-              </div>
+              </Field>
 
               {mode !== "magic" && (
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-medium text-white/60 uppercase tracking-wider">
-                      Password
-                    </label>
-                    {mode === "signin" && (
+                <Field
+                  label="Password"
+                  aside={
+                    mode === "signin" && (
                       <button
                         type="button"
                         onClick={() => resetForMode("otp")}
-                        className="text-[11px] text-emerald-400/80 hover:text-emerald-300 transition-colors"
+                        className="text-[11px] text-[var(--fg-3)] hover:text-[var(--accent)] transition-colors"
                       >
-                        Use a code instead
+                        Use a code
                       </button>
-                    )}
-                  </div>
+                    )
+                  }
+                >
                   <Input
                     type="password"
                     placeholder="••••••••"
@@ -357,94 +273,85 @@ function LoginForm() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={6}
-                    autoComplete={mode === "signin" ? "current-password" : "new-password"}
                   />
-                </div>
+                </Field>
               )}
 
               <Button type="submit" size="lg" className="w-full" loading={loading}>
-                {mode === "signin"
-                  ? "Sign in"
-                  : mode === "signup"
-                  ? "Create account"
-                  : "Send magic link"}
+                {mode === "signin" ? "Sign in" : mode === "signup" ? "Create account" : "Send link"}
               </Button>
             </form>
           )}
-
-          {msg && (
-            <div
-              className={`mt-4 text-sm rounded-xl p-3.5 border animate-slide-down ${
-                msg.type === "error"
-                  ? "bg-red-500/10 border-red-500/30 text-red-300"
-                  : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-              }`}
-            >
-              {msg.text}
-            </div>
-          )}
-
-          <div className="mt-6 text-sm text-white/50 text-center animate-fade-in delay-300">
-            {mode === "signin" ? (
-              <>
-                New here?{" "}
-                <button
-                  type="button"
-                  onClick={() => resetForMode("signup")}
-                  className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
-                >
-                  Create an account
-                </button>
-              </>
-            ) : mode === "signup" ? (
-              <>
-                Already have an account?{" "}
-                <button
-                  type="button"
-                  onClick={() => resetForMode("signin")}
-                  className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
-                >
-                  Sign in
-                </button>
-              </>
-            ) : (
-              <>
-                Prefer a password?{" "}
-                <button
-                  type="button"
-                  onClick={() => resetForMode("signin")}
-                  className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
-                >
-                  Sign in with password
-                </button>
-              </>
-            )}
-          </div>
-
-          <p className="text-center text-white/30 text-xs mt-10 leading-relaxed animate-fade-in delay-400">
-            Viewers at the venue — use the spectator link
-            <br className="hidden sm:inline" /> shared by the auctioneer.
-          </p>
         </div>
-      </main>
+
+        {msg && (
+          <div
+            className={`mt-4 text-[12px] rounded-lg p-3 border animate-fade-down ${
+              msg.kind === "err"
+                ? "border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger)]"
+                : "border-[var(--success-line)] bg-[var(--success-bg)] text-[var(--success)]"
+            }`}
+          >
+            {msg.text}
+          </div>
+        )}
+
+        <div className="mt-8 text-[12px] text-[var(--fg-3)] text-center animate-fade-up delay-200">
+          {mode === "signin" ? (
+            <>
+              No account?{" "}
+              <button
+                onClick={() => resetForMode("signup")}
+                className="text-[var(--accent)] hover:text-[var(--accent-hover)] font-medium"
+              >
+                Create one
+              </button>
+            </>
+          ) : (
+            <>
+              Have an account?{" "}
+              <button
+                onClick={() => resetForMode("signin")}
+                className="text-[var(--accent)] hover:text-[var(--accent-hover)] font-medium"
+              >
+                Sign in
+              </button>
+            </>
+          )}
+        </div>
+
+        <p className="text-center text-[var(--fg-4)] text-[11px] mt-12 leading-relaxed">
+          Viewers at the venue — use the spectator link
+          <br /> shared by the auctioneer.
+        </p>
+      </div>
     </div>
   );
 }
 
-function Bullet({ icon, text }: { icon: string; text: string }) {
+function Field({
+  label,
+  aside,
+  children,
+}: {
+  label: string;
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex items-center gap-3 text-white/70">
-      <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/[0.06] border border-white/10 text-base">
-        {icon}
-      </span>
-      <span className="text-sm">{text}</span>
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <label className="text-[12px] text-[var(--fg-2)]">{label}</label>
+        {aside}
+      </div>
+      {children}
     </div>
   );
 }
 
 function GoogleIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
+    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden>
       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.76h3.56c2.08-1.92 3.28-4.74 3.28-8.09z" />
       <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.56-2.76c-.99.66-2.25 1.06-3.72 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z" />
       <path fill="#FBBC05" d="M5.84 14.11A6.6 6.6 0 0 1 5.5 12c0-.73.13-1.44.34-2.11V7.05H2.18A11 11 0 0 0 1 12c0 1.77.42 3.45 1.18 4.95l3.66-2.84z" />

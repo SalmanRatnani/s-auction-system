@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { Pencil, LayoutDashboard, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { RoleBadge } from "@/components/layout/RoleBadge";
 import type { Role } from "@/types/roles";
@@ -33,7 +34,6 @@ export function UserMenu({
     setMounted(true);
   }, []);
 
-  // Recompute position when opening or on resize/scroll
   useEffect(() => {
     if (!open) return;
 
@@ -41,7 +41,7 @@ export function UserMenu({
       if (!buttonRef.current) return;
       const rect = buttonRef.current.getBoundingClientRect();
       setCoords({
-        top: rect.bottom + 8,
+        top: rect.bottom + 6,
         right: window.innerWidth - rect.right,
       });
     }
@@ -55,7 +55,6 @@ export function UserMenu({
     };
   }, [open]);
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return;
     function handler(e: MouseEvent) {
@@ -68,7 +67,6 @@ export function UserMenu({
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
@@ -96,15 +94,17 @@ export function UserMenu({
         right: coords.right,
         zIndex: 9999,
       }}
-      className="w-64 rounded-xl border border-white/10 bg-[#0a1812]/95 backdrop-blur-xl shadow-2xl shadow-black/60 animate-slide-down overflow-hidden"
+      className="w-[240px] rounded-lg border border-[var(--line-2)] bg-[var(--bg-1)] shadow-[0_8px_32px_-8px_rgba(0,0,0,0.6)] animate-fade-down overflow-hidden"
     >
       {/* User info header */}
-      <div className="px-4 py-3 border-b border-white/5">
-        <div className="text-xs text-white/40">Signed in as</div>
-        <div className="text-sm text-white/90 font-medium truncate">
-          {displayName}
+      <div className="px-3 py-2.5 border-b border-[var(--line-1)]">
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] font-medium text-[var(--fg-1)] truncate">
+            {displayName}
+          </span>
+          <RoleBadge role={role} />
         </div>
-        <div className="text-[11px] text-white/40 truncate mt-0.5">
+        <div className="text-[11px] text-[var(--fg-4)] truncate mt-0.5">
           {email}
         </div>
       </div>
@@ -112,41 +112,33 @@ export function UserMenu({
       {/* Actions */}
       <div className="py-1">
         {canRename && (
-          <button
-            type="button"
+          <MenuItem
+            icon={Pencil}
+            label="Change display name"
             onClick={() => {
               setOpen(false);
               setShowRename(true);
             }}
-            className="w-full text-left flex items-center gap-3 px-4 py-2.5 text-sm text-white/80 hover:bg-white/[0.06] transition-colors"
-          >
-            <span className="text-base">✏️</span>
-            Change display name
-          </button>
+          />
         )}
-        <button
-          type="button"
+        <MenuItem
+          icon={LayoutDashboard}
+          label="Dashboard"
           onClick={() => {
             setOpen(false);
             router.push("/dashboard");
           }}
-          className="w-full text-left flex items-center gap-3 px-4 py-2.5 text-sm text-white/80 hover:bg-white/[0.06] transition-colors"
-        >
-          <span className="text-base">🏸</span>
-          Dashboard
-        </button>
+        />
       </div>
 
       {/* Sign out */}
-      <div className="border-t border-white/5 py-1">
-        <button
-          type="button"
+      <div className="border-t border-[var(--line-1)] py-1">
+        <MenuItem
+          icon={LogOut}
+          label="Sign out"
           onClick={signOut}
-          className="w-full text-left flex items-center gap-3 px-4 py-2.5 text-sm text-red-300 hover:bg-red-500/10 transition-colors"
-        >
-          <span className="text-base">↩</span>
-          Sign out
-        </button>
+          danger
+        />
       </div>
     </div>
   ) : null;
@@ -157,19 +149,16 @@ export function UserMenu({
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-3 rounded-lg hover:bg-white/[0.06] px-2 py-1.5 transition-colors"
+        className="flex items-center gap-2 rounded-md hover:bg-[var(--bg-2)] px-2 py-1 transition-colors duration-100"
       >
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-500/30 text-sm font-bold text-emerald-300">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--bg-2)] border border-[var(--line-2)] text-[11px] font-semibold text-[var(--fg-1)]">
           {displayName.slice(0, 1).toUpperCase()}
         </div>
-        <div className="hidden sm:flex flex-col items-start leading-tight">
-          <span className="text-sm text-white/90 font-medium max-w-[140px] truncate">
-            {displayName}
-          </span>
-          <RoleBadge role={role} className="mt-0.5" />
-        </div>
+        <span className="hidden sm:block text-[13px] text-[var(--fg-2)] max-w-[120px] truncate">
+          {displayName}
+        </span>
         <svg
-          className={`h-3 w-3 text-white/40 transition-transform ${
+          className={`h-3 w-3 text-[var(--fg-4)] transition-transform duration-150 ${
             open ? "rotate-180" : ""
           }`}
           viewBox="0 0 12 12"
@@ -198,5 +187,32 @@ export function UserMenu({
         />
       )}
     </>
+  );
+}
+
+function MenuItem({
+  icon: Icon,
+  label,
+  onClick,
+  danger,
+}: {
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-[13px] transition-colors duration-100 ${
+        danger
+          ? "text-[var(--danger)] hover:bg-[var(--danger-bg)]"
+          : "text-[var(--fg-2)] hover:bg-[var(--bg-2)] hover:text-[var(--fg-1)]"
+      }`}
+    >
+      <Icon size={14} strokeWidth={1.75} />
+      <span>{label}</span>
+    </button>
   );
 }

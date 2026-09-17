@@ -1,5 +1,4 @@
-import { ShuttlecockLoader } from "@/components/branding/ShuttlecockLoader";
-
+import { Loader } from "@/components/branding/Loader";
 export default function Loading() {
-  return <ShuttlecockLoader fullScreen label="Loading teams" />;
+  return <Loader fullScreen label="Loading" />;
 }
