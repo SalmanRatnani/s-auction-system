@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Zap, Wallet, Radio, type LucideIcon } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Logo } from "@/components/branding/Logo";
 
@@ -14,101 +14,65 @@ export default async function Home() {
   return (
     <main className="min-h-screen flex flex-col">
       {/* Nav */}
-      <nav className="flex items-center justify-between px-6 md:px-10 h-16 border-b border-[var(--line-1)]">
+      <nav className="flex items-center justify-between px-6 md:px-10 h-14 border-b border-[var(--line-1)]">
         <Logo href="/" />
         <Link
           href="/login"
           className="text-[13px] text-[var(--fg-2)] hover:text-[var(--fg-1)] transition-colors duration-150"
         >
-          Sign in →
+          Sign in
         </Link>
       </nav>
 
       {/* Hero */}
-      <div className="flex-1 grid place-items-center px-6 py-20">
-        <div className="max-w-[720px] w-full">
+      <div className="flex-1 flex items-center px-6 md:px-10 py-16">
+        <div className="max-w-[640px] w-full">
           <div className="animate-fade-up">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--line-1)] bg-[var(--bg-1)] px-3 py-1 text-[11px] text-[var(--fg-3)] tracking-wide">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--line-1)] bg-[var(--bg-1)] px-2.5 py-1 text-[11px] text-[var(--fg-3)]">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" />
-              Live now
+              Live auction platform
             </div>
           </div>
 
-          <h1 className="text-[44px] md:text-[64px] font-semibold tracking-[-0.03em] leading-[1.05] mt-8 animate-fade-up delay-50">
-            Real-time player
+          <h1 className="text-[40px] md:text-[56px] font-semibold tracking-[-0.03em] leading-[1.05] mt-6 animate-fade-up delay-50">
+            Real-time player auctions,
             <br />
-            auctions for badminton.
+            built for the tournament floor.
           </h1>
 
-          <p className="text-[16px] md:text-[17px] text-[var(--fg-3)] leading-relaxed mt-6 max-w-[560px] animate-fade-up delay-100">
-            A bidding platform built for tournament drafts — live purse tracking,
-            instant updates across every screen, and spectator access from any device.
+          <p className="text-[15px] text-[var(--fg-3)] leading-relaxed mt-5 max-w-[520px] animate-fade-up delay-100">
+            Live bidding, purse tracking, and instant roster updates across
+            every screen — from the auctioneer&apos;s console to every captain
+            in the room.
           </p>
 
-          <div className="flex flex-wrap items-center gap-3 mt-10 animate-fade-up delay-150">
+          <div className="flex flex-wrap items-center gap-2 mt-8 animate-fade-up delay-150">
             <Link
               href="/login"
-              className="group inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-[var(--accent)] text-[var(--accent-ink)] font-medium text-sm hover:bg-[var(--accent-hover)] transition-colors duration-150"
+              className="group inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-[var(--accent)] text-[var(--accent-ink)] font-medium text-[13px] hover:bg-[var(--accent-hover)] transition-colors duration-150"
             >
               Sign in
               <ArrowRight
-                size={15}
+                size={14}
                 strokeWidth={2}
                 className="transition-transform duration-150 group-hover:translate-x-0.5"
               />
             </Link>
             <Link
               href="/login?mode=signup"
-              className="inline-flex items-center h-10 px-4 rounded-lg border border-[var(--line-2)] text-[var(--fg-1)] text-sm hover:bg-[var(--bg-2)] transition-colors duration-150"
+              className="inline-flex items-center h-9 px-3.5 rounded-lg border border-[var(--line-2)] text-[var(--fg-1)] text-[13px] hover:bg-[var(--bg-2)] transition-colors duration-150"
             >
               Create account
             </Link>
-          </div>
-
-          {/* Feature row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-px mt-20 border border-[var(--line-1)] rounded-xl overflow-hidden bg-[var(--line-1)] animate-fade-up delay-200">
-            <Feature
-              icon={Zap}
-              title="Realtime bidding"
-              desc="Sub-second updates across every device."
-            />
-            <Feature
-              icon={Wallet}
-              title="Purse tracking"
-              desc="Live budget control for every captain."
-            />
-            <Feature
-              icon={Radio}
-              title="Spectator access"
-              desc="Public links and projector view."
-            />
           </div>
         </div>
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-[var(--line-1)] px-6 md:px-10 h-12 flex items-center justify-between text-[11px] text-[var(--fg-4)]">
+      <footer className="border-t border-[var(--line-1)] px-6 md:px-10 h-11 flex items-center justify-between text-[11px] text-[var(--fg-4)]">
         <span>S Auction System</span>
         <span>Badminton tournament platform</span>
       </footer>
     </main>
-  );
-}
-
-function Feature({
-  icon: Icon,
-  title,
-  desc,
-}: {
-  icon: LucideIcon;
-  title: string;
-  desc: string;
-}) {
-  return (
-    <div className="bg-[var(--bg-0)] p-5">
-      <Icon size={16} strokeWidth={1.75} className="text-[var(--accent)]" />
-      <div className="text-[13px] font-medium text-[var(--fg-1)] mt-3">{title}</div>
-      <div className="text-[12px] text-[var(--fg-3)] mt-1 leading-relaxed">{desc}</div>
-    </div>
   );
 }
