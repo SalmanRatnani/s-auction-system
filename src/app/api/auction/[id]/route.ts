@@ -2,85 +2,98 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-export async function POST(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-
+async function requireController() {
   const userClient = await createClient();
   const { data: { user } } = await userClient.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
 
   const { data: profile } = await userClient
     .from("users").select("role").eq("id", user.id).single();
   if (profile?.role !== "MAIN_CONTROLLER") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
+  return { user };
+}
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const auth = await requireController();
+  if (auth.error) return auth.error;
 
   const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("auctions")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (error || !data) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json({ auction: data });
+}
 
-  // 1) Capture player_ids BEFORE we delete auction_players
-  const { data: aps, error: apErr } = await admin
-    .from("auction_players")
-    .select("player_id")
-    .eq("auction_id", id);
-  if (apErr) return NextResponse.json({ error: apErr.message }, { status: 500 });
-  const playerIds = (aps ?? []).map((r) => r.player_id);
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const auth = await requireController();
+  if (auth.error) return auth.error;
 
-  // 2) Delete in FK-safe order — abort on any failure
-  const steps: Array<[string, () => Promise<{ error: unknown }>]> = [
-    ["purse_ledger",   () => admin.from("purse_ledger").delete().eq("auction_id", id)],
-    ["bids",           () => admin.from("bids").delete().eq("auction_id", id)],
-    ["team_players",   () => admin.from("team_players").delete().eq("auction_id", id)],
-    ["auction_players",() => admin.from("auction_players").delete().eq("auction_id", id)],
-  ];
+  const body = (await request.json().catch(() => ({}))) as {
+    name?: string;
+    mode?: "DRY_RUN" | "LIVE";
+    config?: Record<string, unknown>;
+  };
 
-  for (const [name, fn] of steps) {
-    const { error } = (await fn()) as { error: { message: string } | null };
-    if (error) {
+  const admin = createAdminClient();
+  const { data: current } = await admin
+    .from("auctions")
+    .select("status, config")
+    .eq("id", id)
+    .single();
+  if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (current.status === "LIVE" || current.status === "PAUSED") {
+    if (body.config) {
       return NextResponse.json(
-        { error: `Reset failed while clearing ${name}: ${error.message}` },
-        { status: 500 }
+        { error: "Cannot change config while auction is live" },
+        { status: 409 }
       );
     }
   }
 
-  // 3) Reset ONLY players from this auction back to IN_POOL
-  if (playerIds.length > 0) {
-    const { error: pErr } = await admin
-      .from("players")
-      .update({ status: "IN_POOL" })
-      .in("id", playerIds)
-      .neq("status", "WITHDRAWN");
-    if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
+  const update: Record<string, unknown> = {};
+  if (typeof body.name === "string" && body.name.trim()) {
+    update.name = body.name.trim();
+  }
+  if (body.mode) {
+    update.mode = body.mode;
+  }
+  if (body.config) {
+    update.config = { ...(current.config ?? {}), ...body.config };
   }
 
-  // 4) Reset purses for teams in this auction
-  const { error: tErr } = await admin
-    .from("teams")
-    .update({ initial_purse: 10_00_00_000 })
-    .eq("auction_id", id);
-  if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 });
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+  }
 
-  // 5) Flip auction back to DRAFT
-  const { error: aErr } = await admin
+  const { data, error } = await admin
     .from("auctions")
-    .update({ status: "DRAFT", started_at: null, ended_at: null })
-    .eq("id", id);
-  if (aErr) return NextResponse.json({ error: aErr.message }, { status: 500 });
+    .update(update)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // 6) Audit
   await admin.from("audit_log").insert({
-    actor_user_id: user.id,
-    action: "AUCTION_RESET",
+    actor_user_id: auth.user!.id,
+    action: "AUCTION_CONFIG_UPDATED",
     entity_type: "auction",
     entity_id: id,
-    payload: {
-      cleared_players: playerIds.length,
-      note: "Full reset — bids, rosters, auction_players wiped",
-    },
+    payload: update,
   });
 
-  return NextResponse.json({ ok: true, cleared: playerIds.length });
+  return NextResponse.json({ auction: data });
 }
