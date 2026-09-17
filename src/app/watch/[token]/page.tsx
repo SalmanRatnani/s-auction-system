@@ -35,7 +35,7 @@ export default async function WatchPage({
 
   return (
     <main className="min-h-screen p-4 md:p-8">
-      <LiveViewer auctionId={link.auction_id} showPurse={true} />
+      <LiveViewer auctionId={link.auction_id} showPurse={false} />
     </main>
   );
 }

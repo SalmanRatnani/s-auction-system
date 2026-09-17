@@ -33,7 +33,7 @@ export default async function WatchProjectorPage({
 
   return (
     <main className="min-h-screen">
-      <ProjectorView auctionId={link.auction_id} />
+      <ProjectorView auctionId={link.auction_id} showPurse={false} />
     </main>
   );
 }

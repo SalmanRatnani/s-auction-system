@@ -5,7 +5,13 @@ import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
 import { DEFAULT_BASE_PRICES, type Category } from "@/constants/categories";
 import { formatINR } from "@/lib/utils";
 
-export function ProjectorView({ auctionId }: { auctionId: string }) {
+export function ProjectorView({
+  auctionId,
+  showPurse = true,
+}: {
+  auctionId: string;
+  showPurse?: boolean;
+}) {
   const { state, loading } = useAuctionState(auctionId, 2000);
 
   if (loading || !state) {
@@ -103,9 +109,11 @@ export function ProjectorView({ auctionId }: { auctionId: string }) {
                       {t.squad_count} players
                     </div>
                   </div>
-                  <div className="text-sm font-mono text-emerald-300">
-                    {formatINR(t.remaining_purse, { compact: true })}
-                  </div>
+                  {showPurse && (
+                    <div className="text-sm font-mono text-emerald-300">
+                      {formatINR(t.remaining_purse, { compact: true })}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
