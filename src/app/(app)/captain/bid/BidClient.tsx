@@ -16,7 +16,7 @@ export function BidClient({
   auctionId: string;
   userId: string;
 }) {
-  const { state, loading, refresh } = useAuctionState(auctionId, 3000); // 3s polling fallback
+  const { state, loading, refresh } = useAuctionState(auctionId, 1500); // 3s polling fallback
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 

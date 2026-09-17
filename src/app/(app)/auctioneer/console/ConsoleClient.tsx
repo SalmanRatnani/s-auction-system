@@ -9,7 +9,7 @@ import { CategoryPicker } from "@/components/auction/CategoryPicker";
 import { DEFAULT_BASE_PRICES, type Category } from "@/constants/categories";
 
 export function ConsoleClient({ auctionId }: { auctionId: string }) {
-  const { state, loading, refresh } = useAuctionState(auctionId);
+  const { state, loading, refresh } = useAuctionState(auctionId, 1500);
   const [busy, setBusy] = useState<
     null | "unsold" | "sell" | "undo" | "pause" | "resume" | "round2"
   >(null);

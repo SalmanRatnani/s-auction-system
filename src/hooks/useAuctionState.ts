@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export type AuctionStateResponse = {
@@ -48,20 +48,30 @@ export type AuctionStateResponse = {
   }>;
 };
 
-export function useAuctionState(auctionId: string, pollMs = 0) {
+export function useAuctionState(auctionId: string, pollMs = 2500) {
   const [state, setState] = useState<AuctionStateResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const inFlightRef = useRef(false);
 
   const refresh = useCallback(async () => {
-    const res = await fetch(`/api/auction/${auctionId}/state`, {
-      cache: "no-store",
-    });
-    if (res.ok) {
-      setState((await res.json()) as AuctionStateResponse);
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    try {
+      const res = await fetch(`/api/auction/${auctionId}/state`, {
+        cache: "no-store",
+      });
+      if (res.ok) {
+        setState((await res.json()) as AuctionStateResponse);
+      }
+    } catch {
+      // network blip — next tick will retry
+    } finally {
+      inFlightRef.current = false;
+      setLoading(false);
     }
-    setLoading(false);
   }, [auctionId]);
 
+  // Initial load + realtime subscription
   useEffect(() => {
     refresh();
 
@@ -70,37 +80,91 @@ export function useAuctionState(auctionId: string, pollMs = 0) {
       .channel(`auction-${auctionId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "auction_players", filter: `auction_id=eq.${auctionId}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "bids",
+          filter: `auction_id=eq.${auctionId}`,
+        },
         () => refresh()
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "bids", filter: `auction_id=eq.${auctionId}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "auction_players",
+          filter: `auction_id=eq.${auctionId}`,
+        },
         () => refresh()
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "auctions", filter: `id=eq.${auctionId}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "auctions",
+          filter: `id=eq.${auctionId}`,
+        },
         () => refresh()
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "purse_ledger", filter: `auction_id=eq.${auctionId}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "purse_ledger",
+          filter: `auction_id=eq.${auctionId}`,
+        },
         () => refresh()
       )
-      .subscribe();
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "team_players",
+          filter: `auction_id=eq.${auctionId}`,
+        },
+        () => refresh()
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "teams",
+          filter: `auction_id=eq.${auctionId}`,
+        },
+        () => refresh()
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          // Catch up immediately after the channel is live
+          refresh();
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [auctionId, refresh]);
 
-  // Optional polling fallback (set pollMs = 2000 when realtime is unreliable)
+  // Polling fallback (default 2.5s) — belt and braces
   useEffect(() => {
     if (!pollMs) return;
     const t = setInterval(refresh, pollMs);
     return () => clearInterval(t);
   }, [pollMs, refresh]);
+
+  // Refresh on tab focus — user switched back to the tab
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [refresh]);
 
   return { state, loading, refresh };
 }
