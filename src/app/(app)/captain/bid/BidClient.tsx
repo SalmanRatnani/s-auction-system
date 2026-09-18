@@ -8,6 +8,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
 import {
   getBasePrice,
+  getIncrement,
   DEFAULT_INCREMENT_PAISE,
 } from "@/constants/categories";
 import { formatINR } from "@/lib/utils";
@@ -42,12 +43,13 @@ export function BidClient({
   const isLive = auction?.status === "LIVE";
   const myTeam = teams.find((t) => t.captain_user_id === userId) ?? null;
 
-  const config = (auction?.config ?? {}) as {
-    increment?: { value: number };
-    maxSquad?: number;
-  };
-  const increment = config.increment?.value ?? DEFAULT_INCREMENT_PAISE;
-  const maxSquad = config.maxSquad ?? 18;
+ const config = (auction?.config ?? {}) as { maxSquad?: number };
+const maxSquad = config.maxSquad ?? 18;
+
+// Per-category increment, falls back to global default if config has none
+const increment = current?.player?.grade
+  ? getIncrement(auction?.config, current.player.grade)
+  : DEFAULT_INCREMENT_PAISE;
 
   const basePrice = current?.player?.grade
   ? getBasePrice(auction?.config, current.player.grade)
@@ -150,60 +152,54 @@ export function BidClient({
           )}
 
           {!isMyLead && isLive && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <Button
-                onClick={() => placeBid(nextBid)}
-                disabled={cannotBid}
-                loading={busy}
-                size="lg"
-                className="col-span-2 md:col-span-1 h-16 text-[15px]"
-              >
-                Bid {formatINR(nextBid, { compact: true })}
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-16 text-[13px]"
-                onClick={() => placeBid(nextBid + increment)}
-                disabled={cannotBid}
-              >
-                +2×
-                <span className="block text-[11px] text-[var(--fg-3)] tnum">
-                  {formatINR(nextBid + increment, { compact: true })}
-                </span>
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-16 text-[13px]"
-                onClick={() => placeBid(nextBid + increment * 4)}
-                disabled={cannotBid}
-              >
-                +5×
-                <span className="block text-[11px] text-[var(--fg-3)] tnum">
-                  {formatINR(nextBid + increment * 4, { compact: true })}
-                </span>
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-16 text-[13px]"
-                onClick={() => {
-                  const input = window.prompt(
-                    `Enter bid amount in ₹ (min ${(nextBid / 100).toFixed(0)})`,
-                    (nextBid / 100).toFixed(0)
-                  );
-                  if (!input) return;
-                  const rupees = Number(input);
-                  if (!Number.isFinite(rupees) || rupees <= 0) return;
-                  placeBid(Math.round(rupees * 100));
-                }}
-                disabled={cannotBid}
-              >
-                Custom
-              </Button>
-            </div>
-          )}
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+    <Button
+      onClick={() => placeBid(nextBid)}
+      disabled={cannotBid}
+      loading={busy}
+      size="lg"
+      className="col-span-2 md:col-span-1 h-16 text-[15px]"
+    >
+      Bid {formatINR(nextBid, { compact: true })}
+    </Button>
+    <Button
+      variant="outline"
+      size="lg"
+      className="h-16 text-[13px]"
+      onClick={() => placeBid(nextBid + increment)}
+      disabled={cannotBid}
+    >
+      Bid {formatINR(nextBid + increment, { compact: true })}
+    </Button>
+    <Button
+      variant="outline"
+      size="lg"
+      className="h-16 text-[13px]"
+      onClick={() => placeBid(nextBid + increment * 4)}
+      disabled={cannotBid}
+    >
+      Bid {formatINR(nextBid + increment * 4, { compact: true })}
+    </Button>
+    <Button
+      variant="outline"
+      size="lg"
+      className="h-16 text-[13px]"
+      onClick={() => {
+        const input = window.prompt(
+          `Enter bid amount in ₹ (min ${(nextBid / 100).toFixed(0)})`,
+          (nextBid / 100).toFixed(0)
+        );
+        if (!input) return;
+        const rupees = Number(input);
+        if (!Number.isFinite(rupees) || rupees <= 0) return;
+        placeBid(Math.round(rupees * 100));
+      }}
+      disabled={cannotBid}
+    >
+      Custom
+    </Button>
+  </div>
+)}
 
           {!purseOk && myTeam && (
             <p className="text-[12px] text-[var(--danger)]">

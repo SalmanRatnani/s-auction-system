@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   CATEGORY_ORDER,
   DEFAULT_BASE_PRICES,
+  DEFAULT_INCREMENTS,
   type Category,
 } from "@/constants/categories";
 
@@ -22,6 +23,7 @@ type Auction = {
 
 type Config = {
   basePrices: Record<Category, number>;
+  increments: Record<Category, number>;
   initialPurse: number;
   increment: { mode: "FIXED" | "TIERED"; value: number };
   timer: { enabled: boolean; seconds: number; autoSellOnExpiry: boolean };
@@ -35,6 +37,7 @@ type Config = {
 
 const DEFAULT_CONFIG: Config = {
   basePrices: { ...DEFAULT_BASE_PRICES },
+  increments: { ...DEFAULT_INCREMENTS },
   initialPurse: 1_00_00_000_00,
   increment: { mode: "FIXED", value: 5_000_00 },
   timer: { enabled: false, seconds: 30, autoSellOnExpiry: true },
@@ -48,7 +51,19 @@ const DEFAULT_CONFIG: Config = {
 
 export function AuctionConfig({ auction }: { auction: Auction }) {
   const router = useRouter();
-  const initial = { ...DEFAULT_CONFIG, ...(auction.config as Partial<Config>) };
+
+  // Merge defaults with stored config, ensuring basePrices/increments
+  // always have every category even if the DB has an older partial map.
+  const stored = (auction.config ?? {}) as Partial<Config>;
+  const initial: Config = {
+    ...DEFAULT_CONFIG,
+    ...stored,
+    basePrices: { ...DEFAULT_BASE_PRICES, ...(stored.basePrices ?? {}) },
+    increments: { ...DEFAULT_INCREMENTS, ...(stored.increments ?? {}) },
+    increment: { ...DEFAULT_CONFIG.increment, ...(stored.increment ?? {}) },
+    timer: { ...DEFAULT_CONFIG.timer, ...(stored.timer ?? {}) },
+  };
+
   const [config, setConfig] = useState<Config>(initial);
   const [name, setName] = useState(auction.name);
   const [busy, setBusy] = useState(false);
@@ -68,6 +83,32 @@ export function AuctionConfig({ auction }: { auction: Auction }) {
       ...c,
       basePrices: { ...c.basePrices, [cat]: paise },
     }));
+  }
+
+  function updateIncrement(cat: Category, paise: number) {
+    setConfig((c) => ({
+      ...c,
+      increments: { ...c.increments, [cat]: paise },
+    }));
+  }
+
+  function loadDefaults() {
+    if (
+      !window.confirm(
+        "Reset all base prices and increments to the defaults?\n\n" +
+          "This will overwrite any custom values you've entered for this auction."
+      )
+    )
+      return;
+    setConfig((c) => ({
+      ...c,
+      basePrices: { ...DEFAULT_BASE_PRICES },
+      increments: { ...DEFAULT_INCREMENTS },
+    }));
+    setMsg({
+      kind: "ok",
+      text: "Defaults loaded. Click Save config to persist.",
+    });
   }
 
   async function save() {
@@ -94,6 +135,7 @@ export function AuctionConfig({ auction }: { auction: Auction }) {
         <CardTitle>Configuration</CardTitle>
       </CardHeader>
       <CardBody className="space-y-5">
+        {/* Auction name + initial purse */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Field label="Auction name">
             <Input
@@ -102,32 +144,26 @@ export function AuctionConfig({ auction }: { auction: Auction }) {
               disabled={isLocked}
             />
           </Field>
-          <Field label="Initial purse (₹)" hint={`Currently ₹${(config.initialPurse / 100).toLocaleString("en-IN")}`}>
+          <Field
+            label="Initial purse (₹)"
+            hint={`Currently ₹${(config.initialPurse / 100).toLocaleString("en-IN")}`}
+          >
             <Input
               type="number"
               value={config.initialPurse / 100}
               onChange={(e) =>
-                update("initialPurse", Math.max(0, Number(e.target.value) * 100))
+                update(
+                  "initialPurse",
+                  Math.max(0, Number(e.target.value) * 100)
+                )
               }
               disabled={isLocked}
             />
           </Field>
         </div>
 
+        {/* Max squad + timer */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Field label="Bid increment (₹)">
-            <Input
-              type="number"
-              value={config.increment.value / 100}
-              onChange={(e) =>
-                update("increment", {
-                  ...config.increment,
-                  value: Math.max(100, Number(e.target.value) * 100),
-                })
-              }
-              disabled={isLocked}
-            />
-          </Field>
           <Field label="Max squad size">
             <Input
               type="number"
@@ -149,8 +185,22 @@ export function AuctionConfig({ auction }: { auction: Auction }) {
               disabled={isLocked || !config.timer.enabled}
             />
           </Field>
+          <Field label="Legacy increment (₹)" hint="Unused — kept for backwards compatibility">
+            <Input
+              type="number"
+              value={config.increment.value / 100}
+              onChange={(e) =>
+                update("increment", {
+                  ...config.increment,
+                  value: Math.max(100, Number(e.target.value) * 100),
+                })
+              }
+              disabled={isLocked}
+            />
+          </Field>
         </div>
 
+        {/* Toggles */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-2">
           <Toggle
             label="Timer enabled"
@@ -192,37 +242,82 @@ export function AuctionConfig({ auction }: { auction: Auction }) {
           />
         </div>
 
+        {/* Base prices + increments per category */}
         <div className="border-t border-[var(--line-1)] pt-4">
-          <button
-            type="button"
-            onClick={() => setOpenPrices((v) => !v)}
-            className="flex items-center gap-1.5 text-[13px] text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors"
-          >
-            {openPrices ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            {openPrices ? "Hide" : "Show"} base prices per category
-          </button>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setOpenPrices((v) => !v)}
+              className="flex items-center gap-1.5 text-[13px] text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors"
+            >
+              {openPrices ? (
+                <ChevronUp size={14} />
+              ) : (
+                <ChevronDown size={14} />
+              )}
+              {openPrices ? "Hide" : "Show"} base prices &amp; increments
+            </button>
+            {openPrices && (
+              <button
+                type="button"
+                onClick={loadDefaults}
+                disabled={isLocked}
+                className="inline-flex items-center gap-1 text-[12px] text-[var(--fg-3)] hover:text-[var(--fg-1)] transition-colors disabled:opacity-40"
+              >
+                <RotateCcw size={11} strokeWidth={2} />
+                Load defaults
+              </button>
+            )}
+          </div>
+
           {openPrices && (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mt-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-3">
               {CATEGORY_ORDER.map((c) => (
-                <div key={c}>
-                  <label className="block text-[10px] uppercase tracking-[0.08em] text-[var(--fg-4)] mb-1">
+                <div key={c} className="space-y-1.5">
+                  <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--fg-3)] font-medium">
                     {c}
-                  </label>
-                  <Input
-                    type="number"
-                    value={config.basePrices[c] / 100}
-                    onChange={(e) =>
-                      updateBasePrice(c, Math.max(0, Number(e.target.value) * 100))
-                    }
-                    disabled={isLocked}
-                    className="h-8 text-[12px]"
-                  />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] uppercase tracking-wider text-[var(--fg-4)] mb-0.5">
+                      Base
+                    </label>
+                    <Input
+                      type="number"
+                      value={config.basePrices[c] / 100}
+                      onChange={(e) =>
+                        updateBasePrice(
+                          c,
+                          Math.max(0, Number(e.target.value) * 100)
+                        )
+                      }
+                      disabled={isLocked}
+                      className="h-8 text-[12px] tnum"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] uppercase tracking-wider text-[var(--fg-4)] mb-0.5">
+                      Incr
+                    </label>
+                    <Input
+                      type="number"
+                      value={config.increments[c] / 100}
+                      onChange={(e) =>
+                        updateIncrement(
+                          c,
+                          Math.max(0, Number(e.target.value) * 100)
+                        )
+                      }
+                      disabled={isLocked}
+                      className="h-8 text-[12px] tnum"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
 
+        {/* Save */}
         <div className="flex items-center gap-3 pt-3 border-t border-[var(--line-1)]">
           <Button onClick={save} loading={busy} disabled={isLocked} size="sm">
             Save config
