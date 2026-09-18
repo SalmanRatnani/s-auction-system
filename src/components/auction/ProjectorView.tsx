@@ -2,7 +2,7 @@
 
 import { useAuctionState } from "@/hooks/useAuctionState";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
-import { DEFAULT_BASE_PRICES, type Category } from "@/constants/categories";
+import { getBasePrice } from "@/constants/categories";
 import { formatINR } from "@/lib/utils";
 
 export function ProjectorView({
@@ -24,10 +24,9 @@ export function ProjectorView({
 
   const { auction, current, highestBid, teams } = state;
   const isLive = auction?.status === "LIVE";
-  const basePrice =
-    current?.player?.grade != null
-      ? DEFAULT_BASE_PRICES[current.player.grade as Category] ?? 0
-      : 0;
+  const basePrice = current?.player?.grade
+  ? getBasePrice(auction?.config, current.player.grade)
+  : 0;
 
   const leader = highestBid
     ? teams.find((t) => t.id === highestBid.team_id)

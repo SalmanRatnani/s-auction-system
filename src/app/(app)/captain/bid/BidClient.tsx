@@ -7,9 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
 import {
-  DEFAULT_BASE_PRICES,
+  getBasePrice,
   DEFAULT_INCREMENT_PAISE,
-  type Category,
 } from "@/constants/categories";
 import { formatINR } from "@/lib/utils";
 import { Check } from "lucide-react";
@@ -50,10 +49,9 @@ export function BidClient({
   const increment = config.increment?.value ?? DEFAULT_INCREMENT_PAISE;
   const maxSquad = config.maxSquad ?? 18;
 
-  const basePrice =
-    current?.player?.grade != null
-      ? DEFAULT_BASE_PRICES[current.player.grade as Category] ?? 0
-      : 0;
+  const basePrice = current?.player?.grade
+  ? getBasePrice(auction?.config, current.player.grade)
+  : 0;
   const currentBid = highestBid?.amount ?? 0;
   const isMyLead = highestBid && myTeam && highestBid.team_id === myTeam.id;
 

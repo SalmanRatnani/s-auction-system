@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useAuctionState } from "@/hooks/useAuctionState";
 import { Card, CardBody } from "@/components/ui/card";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
-import { DEFAULT_BASE_PRICES, type Category } from "@/constants/categories";
+import { getBasePrice } from "@/constants/categories";
 import { formatINR } from "@/lib/utils";
 
 export function LiveViewer({
@@ -25,10 +25,9 @@ export function LiveViewer({
   const { auction, current, highestBid, teams } = state;
   const isLive = auction?.status === "LIVE";
 
-  const basePrice =
-    current?.player?.grade != null
-      ? DEFAULT_BASE_PRICES[current.player.grade as Category] ?? 0
-      : 0;
+  const basePrice = current?.player?.grade
+  ? getBasePrice(auction?.config, current.player.grade)
+  : 0;
 
   return (
     <div className="space-y-6 max-w-6xl animate-fade-up">

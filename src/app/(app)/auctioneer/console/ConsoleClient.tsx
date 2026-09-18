@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
 import { CategoryPicker } from "@/components/auction/CategoryPicker";
-import { DEFAULT_BASE_PRICES, type Category } from "@/constants/categories";
+import { getBasePrice } from "@/constants/categories";
 import {
   Pause,
   Play,
@@ -31,10 +31,9 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
   const isLive = auction?.status === "LIVE";
   const isPaused = auction?.status === "PAUSED";
   const hasCurrent = !!current;
-  const basePrice =
-    current?.player?.grade != null
-      ? DEFAULT_BASE_PRICES[current.player.grade as Category] ?? 0
-      : 0;
+  const basePrice = current?.player?.grade
+  ? getBasePrice(auction?.config, current.player.grade)
+  : 0;
   const currentBid = highestBid?.amount ?? 0;
 
   async function call(endpoint: string, label: string, confirmMsg?: string) {

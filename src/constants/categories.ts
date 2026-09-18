@@ -101,3 +101,19 @@ export const CATEGORY_TONES: Record<Category, CategoryTone> = {
 export function toneForGrade(grade: string): CategoryTone {
   return CATEGORY_TONES[grade as Category] ?? "neutral";
 }
+
+/**
+ * Resolve the base price for a given grade, preferring the auction config
+ * over the global default. `config` is the `auctions.config` JSONB.
+ */
+export function getBasePrice(
+  config: Record<string, unknown> | null | undefined,
+  grade: string
+): number {
+  const fallback = DEFAULT_BASE_PRICES[grade as Category] ?? 0;
+  if (!config) return fallback;
+  const basePrices = (config as { basePrices?: Record<string, number> }).basePrices;
+  if (!basePrices) return fallback;
+  const value = basePrices[grade];
+  return typeof value === "number" && value > 0 ? value : fallback;
+}
