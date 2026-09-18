@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { RoleGuard } from "@/components/guards/RoleGuard";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +21,9 @@ export default async function MyTeamPage() {
 
 async function Inner() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const auction = await getOrCreateDraftAuction();
   if (!auction) return <div className="text-[var(--danger)]">No auction.</div>;
 
@@ -60,7 +63,12 @@ async function Inner() {
     .map((r) => {
       const p = Array.isArray(r.player) ? r.player[0] : r.player;
       if (!p) return null;
-      return { id: r.id, price: r.price, acquired_via: r.acquired_via, player: p };
+      return {
+        id: r.id,
+        price: r.price,
+        acquired_via: r.acquired_via,
+        player: p,
+      };
     })
     .filter((r): r is NonNullable<typeof r> => r !== null);
 
@@ -79,14 +87,18 @@ async function Inner() {
   return (
     <div className="space-y-6 max-w-4xl animate-fade-up">
       <header>
-        <h1 className="text-[24px] font-semibold tracking-tight">My Team</h1>
+        <h1 className="text-[22px] font-semibold tracking-tight">My Team</h1>
         <p className="text-[13px] text-[var(--fg-3)] mt-1">
           {team.name} · {squadCount}/{maxSquad} players
         </p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Stat label="Remaining purse" value={formatINR(remaining, { compact: true })} accent />
+        <Stat
+          label="Remaining purse"
+          value={formatINR(remaining, { compact: true })}
+          accent
+        />
         <Stat label="Spent" value={formatINR(spent, { compact: true })} />
         <Stat label="Squad" value={`${squadCount} / ${maxSquad}`} />
       </div>
@@ -95,7 +107,14 @@ async function Inner() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Roster</CardTitle>
+          <CardTitle>
+            Roster
+            {roster.length > 0 && (
+              <span className="ml-2 text-[11px] font-normal text-[var(--fg-4)]">
+                tap a player to view profile
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardBody>
           {roster.length === 0 ? (
@@ -107,17 +126,17 @@ async function Inner() {
               {roster.map((r) => (
                 <Link
                   key={r.id}
-                  href={`/captain/teams?highlight=${r.player.id}`}
-                  className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-md hover:bg-[var(--bg-2)] transition-colors"
+                  href={`/player/${r.player.id}`}
+                  className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-md transition-colors hover:bg-[var(--bg-2)]"
                 >
                   {r.player.image_url ? (
                     <img
                       src={r.player.image_url}
                       alt=""
-                      className="h-9 w-9 rounded-md object-cover border border-[var(--line-1)]"
+                      className="h-11 w-11 rounded-full object-cover border border-[var(--line-1)]"
                     />
                   ) : (
-                    <div className="h-9 w-9 rounded-md bg-[var(--bg-2)] border border-[var(--line-1)]" />
+                    <div className="h-11 w-11 rounded-full bg-[var(--bg-2)] border border-[var(--line-1)]" />
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-medium text-[var(--fg-1)] truncate">
@@ -127,10 +146,17 @@ async function Inner() {
                       {r.player.player_code}
                     </div>
                   </div>
-                  <Badge tone={toneForGrade(r.player.grade)}>{r.player.grade}</Badge>
+                  <Badge tone={toneForGrade(r.player.grade)}>
+                    {r.player.grade}
+                  </Badge>
                   <div className="text-[13px] font-mono text-[var(--accent)] tnum w-20 text-right">
                     {formatINR(r.price, { compact: true })}
                   </div>
+                  <ChevronRight
+                    size={14}
+                    strokeWidth={1.75}
+                    className="text-[var(--fg-4)] shrink-0"
+                  />
                 </Link>
               ))}
             </div>

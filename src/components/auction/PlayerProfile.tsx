@@ -45,12 +45,12 @@ export function PlayerProfile({
           {/* Photo */}
           <div className="sm:w-[200px] shrink-0 border-b sm:border-b-0 sm:border-r border-[var(--line-1)] bg-[var(--bg-0)]">
             {player.image_url ? (
-              <img
-                src={player.image_url}
-                alt={player.name}
-                className="h-56 sm:h-full w-full object-cover"
-              />
-            ) : (
+  <img
+    src={player.image_url}
+    alt={player.name}
+    className="w-full h-auto max-h-[480px] object-contain sm:h-full sm:max-h-none sm:object-cover"
+  />
+) : (
               <div className="h-56 sm:h-full w-full grid place-items-center bg-[var(--bg-2)]">
                 <span className="text-[11px] text-[var(--fg-4)] uppercase tracking-widest">
                   No photo

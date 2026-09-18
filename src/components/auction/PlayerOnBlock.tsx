@@ -36,21 +36,21 @@ export function PlayerOnBlock({
     <div className="rounded-xl border border-[var(--line-1)] bg-[var(--bg-1)] overflow-hidden">
       <div className="flex flex-col md:flex-row">
         {/* Photo */}
-        <div className="md:w-[220px] shrink-0 md:border-r border-b md:border-b-0 border-[var(--line-1)] bg-[var(--bg-0)]">
-          {player.image_url ? (
-            <img
-              src={player.image_url}
-              alt={player.name}
-              className="h-48 md:h-full w-full object-cover"
-            />
-          ) : (
-            <div className="h-48 md:h-full w-full grid place-items-center bg-[var(--bg-2)]">
-              <span className="text-[11px] text-[var(--fg-4)] uppercase tracking-widest">
-                No photo
-              </span>
-            </div>
-          )}
-        </div>
+<div className="md:w-[220px] shrink-0 md:border-r border-b md:border-b-0 border-[var(--line-1)] bg-[var(--bg-0)]">
+  {player.image_url ? (
+    <img
+      src={player.image_url}
+      alt={player.name}
+      className="w-full h-auto max-h-[420px] object-contain md:h-full md:max-h-none md:object-cover"
+    />
+  ) : (
+    <div className="h-48 md:h-full w-full grid place-items-center bg-[var(--bg-2)]">
+      <span className="text-[11px] text-[var(--fg-4)] uppercase tracking-widest">
+        No photo
+      </span>
+    </div>
+  )}
+</div>
 
         {/* Body */}
         <div className="flex-1 p-6 md:p-8 min-w-0">
