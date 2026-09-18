@@ -106,6 +106,23 @@ export async function GET(
     };
   });
 
+  // --- Which categories each team has already won ---
+  // Powers the "one player per category per team" rule in the bid UI.
+  const { data: rosters } = await admin
+    .from("team_players")
+    .select(`
+      team_id,
+      player:players (grade)
+    `)
+    .eq("auction_id", id);
+
+  const gradesByTeam: Record<string, string[]> = {};
+  (rosters ?? []).forEach((r) => {
+    const p = Array.isArray(r.player) ? r.player[0] : r.player;
+    if (!p?.grade) return;
+    (gradesByTeam[r.team_id] ??= []).push(p.grade);
+  });
+
   // Purse is only exposed to authenticated users.
   // Public viewers get a copy with purses zeroed out.
   const teams = (teamsRaw ?? []).map((t) => {
@@ -121,6 +138,7 @@ export async function GET(
         : 0,
       spent: isAuthed ? purse?.spent ?? 0 : 0,
       squad_count: purse?.squad_count ?? 0,
+      won_grades: gradesByTeam[t.id] ?? [],
     };
   });
 

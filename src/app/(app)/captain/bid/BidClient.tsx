@@ -62,6 +62,11 @@ const increment = current?.player?.grade
   const purseOk = myTeam && purseAfter >= 0;
   const squadOk = myTeam ? myTeam.squad_count < maxSquad : false;
 
+  // NEW: one player per category per team
+  const currentGrade = current?.player?.grade ?? null;
+  const alreadyOwnsCategory =
+    !!(myTeam && currentGrade && myTeam.won_grades?.includes(currentGrade));
+
   async function placeBid(amount: number) {
     unlockAudio();
     if (!current) return;
@@ -82,8 +87,15 @@ const increment = current?.player?.grade
     refresh();
   }
 
-  const cannotBid =
-    !isLive || !current || !myTeam || !purseOk || !squadOk || isMyLead || busy;
+    const cannotBid =
+    !isLive ||
+    !current ||
+    !myTeam ||
+    !purseOk ||
+    !squadOk ||
+    isMyLead ||
+    alreadyOwnsCategory ||
+    busy;
 
   return (
     <div className="max-w-3xl space-y-4 animate-fade-up">
@@ -138,7 +150,17 @@ const increment = current?.player?.grade
             currentBid={currentBid}
             teams={teams.map((t) => ({ id: t.id, name: t.name }))}
           />
-
+          {alreadyOwnsCategory && myTeam && currentGrade && (
+            <div className="rounded-lg border border-[var(--warning-line)] bg-[var(--warning-bg)] p-4">
+              <div className="text-[13px] text-[var(--warning)] font-medium">
+                You already own a {currentGrade} player
+              </div>
+              <p className="text-[12px] text-[var(--warning)] opacity-75 mt-1">
+                Each team can only own one player per category. You cannot
+                bid on this player.
+              </p>
+            </div>
+          )}
           {isMyLead && (
             <div className="rounded-lg border border-[var(--success-line)] bg-[var(--success-bg)] p-4 text-center">
               <div className="flex items-center justify-center gap-2 text-[13px] text-[var(--success)] font-medium">

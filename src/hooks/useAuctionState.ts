@@ -36,7 +36,7 @@ export type AuctionStateResponse = {
     created_at: string;
   } | null;
   counts: Record<string, number>;
-  teams: Array<{
+    teams: Array<{
     id: string;
     name: string;
     logo_url: string | null;
@@ -45,6 +45,7 @@ export type AuctionStateResponse = {
     remaining_purse: number;
     spent: number;
     squad_count: number;
+    won_grades: string[];
   }>;
 };
 
