@@ -116,8 +116,9 @@ async function Inner({ params }: { params: Promise<{ teamId: string }> }) {
     <div className="animate-slide-up">
       <TeamDetail
         team={team}
-        showPurse={showPurse}
+        showPurse={false}
         backHref="/viewer/live"
+        playerLinkBase="/player"
       />
     </div>
   );
