@@ -26,7 +26,7 @@ async function Inner() {
 
   const { data: teams } = await supabase
     .from("teams")
-    .select("id, name, logo_url, captain_user_id, captain_player_id, initial_purse, created_at")
+    .select("id, name, logo_url, captain_user_id, co_captain_user_id, captain_player_id, initial_purse, created_at")
     .eq("auction_id", auction.id)
     .order("created_at", { ascending: true });
 

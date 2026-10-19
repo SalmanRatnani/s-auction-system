@@ -37,7 +37,7 @@ async function Inner({ params }: { params: Promise<{ teamId: string }> }) {
   // Load team
   const { data: teamRow } = await supabase
     .from("teams")
-    .select("id, name, logo_url, captain_user_id, initial_purse")
+    .select("id, name, logo_url, captain_user_id, co_captain_user_id, initial_purse")
     .eq("id", teamId)
     .eq("auction_id", auction.id)
     .maybeSingle();
@@ -90,7 +90,7 @@ async function Inner({ params }: { params: Promise<{ teamId: string }> }) {
   const config = (auction.config ?? {}) as { maxSquad?: number };
 
   // Purse shows ONLY when viewing your own team
-  const isMyTeam = teamRow.captain_user_id === user.id;
+  const isMyTeam = (teamRow.captain_user_id === user.id || teamRow.co_captain_user_id === user.id);
 
   const team: TeamDetailData = {
     id: teamRow.id,

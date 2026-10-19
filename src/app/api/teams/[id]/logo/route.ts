@@ -29,11 +29,11 @@ export async function POST(
 
   const admin = createAdminClient();
   const { data: team } = await admin
-    .from("teams").select("captain_user_id").eq("id", id).single();
+    .from("teams").select("captain_user_id, co_captain_user_id").eq("id", id).single();
   if (!team) return NextResponse.json({ error: "Team not found" }, { status: 404 });
 
   const isController = profile?.role === "MAIN_CONTROLLER";
-  const isOwnCaptain = team.captain_user_id === user.id;
+  const isOwnCaptain = (team.captain_user_id === user.id || team.co_captain_user_id === user.id);
   if (!isController && !isOwnCaptain) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

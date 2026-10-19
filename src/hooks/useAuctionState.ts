@@ -56,6 +56,7 @@ export type AuctionStateResponse = {
     name: string;
     logo_url: string | null;
     captain_user_id: string | null;
+    co_captain_user_id: string | null;
     initial_purse: number;
     remaining_purse: number;
     spent: number;

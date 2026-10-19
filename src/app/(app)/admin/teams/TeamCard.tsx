@@ -26,6 +26,7 @@ type Team = {
   name: string;
   logo_url: string | null;
   captain_user_id: string | null;
+  co_captain_user_id: string | null;
   captain_player_id: string | null;
   initial_purse: number;
 };
@@ -193,6 +194,23 @@ export function TeamCard({
               {captain.email}
             </p>
           )}
+        </div>
+
+        {/* Second captain login — shares the same purse and roster */}
+        <div className="space-y-1.5">
+          <label className="block text-[10px] uppercase tracking-[0.08em] text-[var(--fg-4)]">Partner Captain Login (Optional)</label>
+          <select
+            value={team.co_captain_user_id ?? ""}
+            disabled={busy || uploading}
+            onChange={(e) => patch({ co_captain_user_id: e.target.value || null })}
+            className="h-9 w-full rounded-md bg-[var(--bg-1)] border border-[var(--line-1)] px-2.5 text-[12px] text-[var(--fg-1)] focus:outline-none focus:border-[var(--accent-line)]"
+          >
+            <option value="">— no partner —</option>
+            {users.filter((u) => u.id !== team.captain_user_id).map((u) => (
+              <option key={u.id} value={u.id}>{u.display_name ?? u.email}</option>
+            ))}
+          </select>
+          <p className="text-[10px] text-[var(--fg-4)]">Both captains can bid and manage this team. They share the same purse and roster.</p>
         </div>
 
         {/* Playing Captain (Player) */}

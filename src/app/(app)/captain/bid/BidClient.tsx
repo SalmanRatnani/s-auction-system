@@ -43,7 +43,7 @@ export function BidClient({
 
   const { auction, current, highestBid, teams } = state;
   const isLive = auction?.status === "LIVE";
-  const myTeam = teams.find((t) => t.captain_user_id === userId) ?? null;
+  const myTeam = teams.find((t) => (t.captain_user_id === userId || t.co_captain_user_id === userId)) ?? null;
 
  const config = (auction?.config ?? {}) as { maxSquad?: number };
 const maxSquad = config.maxSquad ?? 18;

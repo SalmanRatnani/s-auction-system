@@ -123,7 +123,7 @@ export async function GET(
   // --- Teams ---
   const { data: teamsRaw } = await admin
     .from("teams")
-    .select("id, name, logo_url, captain_user_id, initial_purse")
+    .select("id, name, logo_url, captain_user_id, co_captain_user_id, initial_purse")
     .eq("auction_id", id)
     .order("created_at", { ascending: true });
 
@@ -217,6 +217,7 @@ export async function GET(
       name: t.name,
       logo_url: t.logo_url,
       captain_user_id: t.captain_user_id,
+      co_captain_user_id: t.co_captain_user_id,
       initial_purse: isAuthed ? t.initial_purse : 0,
       remaining_purse: isAuthed
         ? purse?.remaining_purse ?? t.initial_purse
