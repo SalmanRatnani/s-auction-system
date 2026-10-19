@@ -58,7 +58,7 @@ async function Inner() {
 
   let playersQuery = supabase
     .from("players")
-    .select("id, name, grade")
+    .select("id, name, grade, player_code")
     .order("name", { ascending: true });
   playersQuery =
     assignedCaptainIds.length > 0
@@ -66,7 +66,15 @@ async function Inner() {
           `status.eq.IN_POOL,id.in.(${assignedCaptainIds.join(",")})`
         )
       : playersQuery.eq("status", "IN_POOL");
-  const { data: players } = await playersQuery;
+  // Temporary QA players appear only in a rehearsal; real event dropdowns
+  // exclude QA records even when they were reserved during a prior test.
+  const { data: allPlayers } = await playersQuery;
+  const players = (allPlayers ?? []).filter((player) =>
+    assignedCaptainIds.includes(player.id) ||
+    (auction.mode === "DRY_RUN"
+      ? player.player_code.startsWith("QA-20261019-")
+      : !player.player_code.startsWith("QA-"))
+  );
 
   return (
     <div className="space-y-6 max-w-6xl animate-fade-up">

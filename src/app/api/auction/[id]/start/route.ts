@@ -39,25 +39,35 @@ export async function POST(
   }
 
   // Guard: need approved players
-  const { count: playerCount } = await admin
-    .from("players").select("id", { count: "exact", head: true })
-    .eq("status", "IN_POOL");
-  if ((playerCount ?? 0) === 0) {
-    return NextResponse.json(
-      { error: "No players in pool. Approve registrations first." },
-      { status: 409 }
-    );
-  }
-
+  const isTestMode = auction.mode === "DRY_RUN";
   // Seed only ordinary players. Both reserved playing captains are allotted last.
-  const { data: allPlayers } = await admin
-    .from("players").select("id").eq("status", "IN_POOL");
+  let poolQuery = admin.from("players").select("id").eq("status", "IN_POOL");
+  poolQuery = isTestMode
+    ? poolQuery.like("player_code", "QA-20261019-%").is("registration_id", null)
+    : poolQuery.not("player_code", "like", "QA-%");
+  const { data: allPlayers, error: poolErr } = await poolQuery;
+  if (poolErr) return NextResponse.json({ error: poolErr.message }, { status: 500 });
   const { data: capTeams, error: capErr } = await admin.from("teams")
     .select("captain_player_id, co_captain_player_id").eq("auction_id", id);
   if (capErr) return NextResponse.json({ error: capErr.message }, { status: 500 });
   const reserved = new Set((capTeams ?? []).flatMap((t) =>
     [t.captain_player_id, t.co_captain_player_id].filter((v): v is string => !!v)));
   const players = (allPlayers ?? []).filter((p) => !reserved.has(p.id));
+  if (players.length === 0) return NextResponse.json({
+    error: isTestMode ? "No QA test players available" : "No registered players available"
+  }, { status: 409 });
+  if (reserved.size > 0) {
+    const { data: reservedPlayers, error: checkErr } = await admin.from("players")
+      .select("id,player_code,registration_id").in("id",[...reserved]);
+    if (checkErr) return NextResponse.json({ error: checkErr.message }, { status: 500 });
+    const incompatible = (reservedPlayers ?? []).some((p) =>
+      (p.player_code.startsWith("QA-") && p.registration_id === null) !== isTestMode);
+    if (incompatible) return NextResponse.json({
+      error: isTestMode
+        ? "For DRY_RUN choose QA test playing captains only"
+        : "For LIVE choose registered playing captains only"
+    }, { status: 409 });
+  }
 
   if (players && players.length > 0) {
     const rows = players.map((p, idx) => ({
