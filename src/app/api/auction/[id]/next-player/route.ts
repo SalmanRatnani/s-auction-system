@@ -98,6 +98,17 @@ export async function POST(
     }, { status: 409 });
   }
 
+  // Transactionally close every earlier grade before admitting a new grade.
+  // Empty grades are charged at their configured base price. A failed captain
+  // charge blocks advancement rather than leaving a partial allotment.
+  const { error: captainError } = await userClient.rpc("close_completed_captain_grades", {
+    p_auction_id: id,
+    p_before_grade: activeGrade,
+  });
+  if (captainError) return NextResponse.json({
+    error: `Playing-captain allotment must complete before ${activeGrade}: ${captainError.message}`
+  }, { status: 409 });
+
   const available = ordinary.filter((player) => getGrade(player) === activeGrade);
   // Draw randomly only WITHIN the current grade.
   const picked = available[Math.floor(Math.random() * available.length)];
