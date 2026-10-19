@@ -43,8 +43,7 @@ export function CategoryPicker({
             Sequential category draw
           </h3>
           <p className="text-[12px] text-[var(--fg-3)] mt-1">
-            A+ → A1 → A2 → A3 → B1 → … → G1. Every eligible player
-            in the current category must be sold or marked unsold before advancing.
+            A+ → A1 → A2 → A3 → B1 → … → G1. Unsold players are immediately drawn again in the same category. Only the Main Controller may skip a player after a retry. Advance only after every player is sold or explicitly skipped.
           </p>
           {activeGrade && (
             <p className="mt-2 text-[12px] font-semibold text-[var(--accent)]" aria-live="polite">
@@ -93,7 +92,7 @@ export function CategoryPicker({
       </div>
       {activeGrade === null && (
         <p className="text-[12px] text-[var(--fg-3)] mt-4">
-          All regular players for this round have been processed. Start Round 2 for any unsold players, or proceed to final allotment after Round 2.
+          All ordinary players are sold or explicitly skipped. The controller can proceed to Final allotment; the old separate Round 2 is not needed.
         </p>
       )}
     </div>

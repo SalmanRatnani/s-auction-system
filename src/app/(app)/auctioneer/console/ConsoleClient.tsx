@@ -20,7 +20,7 @@ import {
 export function ConsoleClient({ auctionId }: { auctionId: string }) {
   const { state, loading, refresh } = useAuctionState(auctionId, 1500);
   const [busy, setBusy] = useState<
-    null | "unsold" | "sell" | "undo" | "pause" | "resume" | "round2"
+    null | "unsold" | "skip" | "sell" | "undo" | "pause" | "resume" | "round2"
   >(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -36,6 +36,8 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
   ? getBasePrice(auction?.config, current.player.grade)
   : 0;
   const currentBid = highestBid?.amount ?? 0;
+  const isRetry = (current?.round ?? 1) > 1;
+  const isLegacyRoundTwo = !!(auction as { round_two_started_at?: string | null })?.round_two_started_at;
 
   // A playing captain is never bid on — the auctioneer assigns them.
   const captainTeam = current?.captainTeam ?? null;
@@ -122,7 +124,7 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
               Resume
             </Button>
           )}
-          <Button
+          {!isRetry && !isLegacyRoundTwo && <Button
             variant="outline"
             size="sm"
             onClick={() =>
@@ -133,11 +135,11 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
               )
             }
             loading={busy === "round2"}
-            disabled={busy !== null || !isLive || hasCurrent || Object.values(counts).some((n) => n > 0)}
+            disabled={busy !== null || !isLive || hasCurrent || Object.values(counts).some((n) => n > 0) || isRetry || isLegacyRoundTwo}
           >
             <RotateCcw size={13} strokeWidth={2} />
-            Round 2
-          </Button>
+            Round 2 (legacy only)
+          </Button>}
         </div>
       </header>
 
@@ -205,8 +207,14 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
               disabled={busy !== null || !isLive}
             >
               <X size={14} strokeWidth={2} />
-              Mark unsold
+              {isLegacyRoundTwo ? "Mark unsold" : "Unsold → Retry same player"}
             </Button>
+            {isRetry && !isLegacyRoundTwo && (
+              <Button variant="outline" loading={busy === "skip"} disabled={busy !== null || !isLive}
+                onClick={() => call("skip-player", "skip", "Explicitly skip this unsold player and move to the next player in the same category? Main Controller authorization is required.")}>
+                Skip player (controller only)
+              </Button>
+            )}
           </div>
         </div>
       ) : (
