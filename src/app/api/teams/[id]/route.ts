@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
+const LOGO_BUCKET = "team-logos";
+
 async function loadUserAndTeam(
   teamId: string
 ): Promise<
@@ -23,6 +25,38 @@ async function loadUserAndTeam(
   return { user: { id: user.id, role: profile?.role ?? "VIEWER" }, team };
 }
 
+/**
+ * Remove every logo belonging to a team from Storage.
+ * Logos live at `<teamId>/logo-<timestamp>.<ext>`, so we clear the whole
+ * folder, plus whatever path the stored public URL points at.
+ */
+async function removeTeamLogos(
+  admin: ReturnType<typeof createAdminClient>,
+  teamId: string,
+  logoUrl: string | null
+) {
+  const paths = new Set<string>();
+
+  const { data: files } = await admin.storage
+    .from(LOGO_BUCKET)
+    .list(teamId, { limit: 100 });
+  (files ?? []).forEach((f) => paths.add(`${teamId}/${f.name}`));
+
+  if (logoUrl) {
+    const marker = `/${LOGO_BUCKET}/`;
+    const i = logoUrl.indexOf(marker);
+    if (i >= 0) {
+      const rel = logoUrl.slice(i + marker.length).split("?")[0];
+      if (rel) paths.add(decodeURIComponent(rel));
+    }
+  }
+
+  if (paths.size === 0) return;
+
+  const { error } = await admin.storage.from(LOGO_BUCKET).remove([...paths]);
+  if (error) console.error("Team logo cleanup failed", error);
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -33,7 +67,8 @@ export async function PATCH(
   const { user, team } = loaded;
 
   const isController = user.role === "MAIN_CONTROLLER";
-  const isOwnCaptain = (team as { captain_user_id: string | null }).captain_user_id === user.id;
+  const isOwnCaptain =
+    (team as { captain_user_id: string | null }).captain_user_id === user.id;
 
   if (!isController && !isOwnCaptain) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -58,10 +93,13 @@ export async function PATCH(
     update.name = trimmed;
   }
 
-  // Only controller can assign/reassign captain user
+  // Only controller can assign/reassign the captain's login
   if ("captain_user_id" in body) {
     if (!isController) {
-      return NextResponse.json({ error: "Only the controller can assign captains" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Only the controller can assign captains" },
+        { status: 403 }
+      );
     }
     update.captain_user_id = body.captain_user_id ?? null;
 
@@ -78,12 +116,54 @@ export async function PATCH(
     }
   }
 
-  // NEW: Only controller can assign/reassign playing captain (player)
+  // Only controller can assign/reassign the playing captain (a player)
   if ("captain_player_id" in body) {
     if (!isController) {
-      return NextResponse.json({ error: "Only the controller can assign playing captains" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Only the controller can assign playing captains" },
+        { status: 403 }
+      );
     }
-    update.captain_player_id = body.captain_player_id ?? null;
+
+    const playerId = body.captain_player_id ?? null;
+
+    if (playerId) {
+      const admin = createAdminClient();
+
+      const { data: player } = await admin
+        .from("players").select("id, name, status").eq("id", playerId).maybeSingle();
+      if (!player) {
+        return NextResponse.json({ error: "Player not found" }, { status: 404 });
+      }
+
+      // A player can captain only one team
+      const { data: other } = await admin
+        .from("teams")
+        .select("id, name")
+        .eq("captain_player_id", playerId)
+        .neq("id", id)
+        .limit(1)
+        .maybeSingle();
+      if (other) {
+        return NextResponse.json(
+          { error: `${player.name} is already the playing captain of ${other.name}` },
+          { status: 409 }
+        );
+      }
+
+      // Already-sold players can't be (re)assigned unless they're already
+      // this team's captain (i.e. a no-op re-save).
+      const currentCaptainPlayer = (team as { captain_player_id: string | null })
+        .captain_player_id;
+      if (player.status === "SOLD" && currentCaptainPlayer !== playerId) {
+        return NextResponse.json(
+          { error: `${player.name} has already been sold` },
+          { status: 409 }
+        );
+      }
+    }
+
+    update.captain_player_id = playerId;
   }
 
   if (Object.keys(update).length === 0) {
@@ -119,8 +199,9 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Guard: no team_players
   const admin = createAdminClient();
+
+  // Guard: a team that owns players can't be deleted
   const { count } = await admin
     .from("team_players").select("id", { count: "exact", head: true })
     .eq("team_id", id);
@@ -131,17 +212,13 @@ export async function DELETE(
     );
   }
 
-  // --- Delete the logo from Storage ---
-  const logoUrl = (team as { logo_url: string | null }).logo_url;
-  if (logoUrl) {
-    const parts = logoUrl.split("/team-logos/");
-    if (parts.length === 2) {
-      const filePath = parts[1];
-      await admin.storage.from("team-logos").remove([filePath]);
-    }
-  }
+  // Remove the logo(s) from Storage BEFORE deleting the row
+  await removeTeamLogos(
+    admin,
+    id,
+    (team as { logo_url: string | null }).logo_url
+  );
 
-  // --- Delete the team row ---
   const { error } = await admin.from("teams").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

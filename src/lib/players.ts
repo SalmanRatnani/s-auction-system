@@ -9,7 +9,7 @@ export async function loadPlayerProfile(
   const { data: p } = await supabase
     .from("players")
     .select(
-      "id, player_code, name, age, grade, image_url, playing_centre, played_mira_bhayandar, achievements"
+      "id, player_code, name, age, grade, image_url, playing_centre, playing_hand, achievements"
     )
     .eq("id", playerId)
     .maybeSingle();
@@ -43,7 +43,7 @@ export async function loadPlayerProfile(
     grade: p.grade,
     image_url: p.image_url,
     playing_centre: p.playing_centre,
-    played_mira_bhayandar: p.played_mira_bhayandar,
+    playing_hand: p.playing_hand,
     achievements: p.achievements,
     sale,
   };

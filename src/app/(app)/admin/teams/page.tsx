@@ -35,11 +35,24 @@ async function Inner() {
     .select("id, email, display_name, role")
     .order("display_name", { ascending: true });
 
-  const { data: players } = await supabase
+  // Dropdown for "Playing Captain": anyone still in the pool, plus players
+  // already chosen as a captain (they flip to SOLD once assigned, and would
+  // otherwise vanish from their own team's dropdown).
+  const assignedCaptainIds = (teams ?? [])
+    .map((t) => t.captain_player_id)
+    .filter((v): v is string => !!v);
+
+  let playersQuery = supabase
     .from("players")
     .select("id, name, grade")
-    .eq("status", "IN_POOL")
     .order("name", { ascending: true });
+  playersQuery =
+    assignedCaptainIds.length > 0
+      ? playersQuery.or(
+          `status.eq.IN_POOL,id.in.(${assignedCaptainIds.join(",")})`
+        )
+      : playersQuery.eq("status", "IN_POOL");
+  const { data: players } = await playersQuery;
 
   return (
     <div className="space-y-6 max-w-6xl animate-fade-up">
@@ -61,11 +74,14 @@ async function Inner() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {(teams ?? []).map((t) => (
-          <TeamCard 
-            key={t.id} 
-            team={t} 
-            users={users ?? []} 
-            players={players ?? []} 
+          <TeamCard
+            key={t.id}
+            team={t}
+            users={users ?? []}
+            players={players ?? []}
+            takenPlayerIds={assignedCaptainIds.filter(
+              (pid) => pid !== t.captain_player_id
+            )}
           />
         ))}
         {(teams?.length ?? 0) === 0 && (

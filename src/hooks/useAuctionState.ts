@@ -24,10 +24,11 @@ export type AuctionStateResponse = {
       grade: string;
       image_url: string | null;
       achievements: string | null;
-      participation_history: string | null;
       playing_centre: string | null;
-      played_mira_bhayandar: boolean | null;
+      playing_hand: string | null;
     } | null;
+    /** Set when the player on the block is a team's playing captain. */
+    captainTeam?: { id: string; name: string } | null;
   } | null;
   highestBid: {
     id: string;
@@ -36,7 +37,7 @@ export type AuctionStateResponse = {
     created_at: string;
   } | null;
   counts: Record<string, number>;
-    teams: Array<{
+  teams: Array<{
     id: string;
     name: string;
     logo_url: string | null;
@@ -45,6 +46,7 @@ export type AuctionStateResponse = {
     remaining_purse: number;
     spent: number;
     squad_count: number;
+    /** Categories (grades) this team already owns a player from. */
     won_grades: string[];
   }>;
 };

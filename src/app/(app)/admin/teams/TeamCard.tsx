@@ -34,10 +34,13 @@ export function TeamCard({
   team,
   users,
   players,
+  takenPlayerIds = [],
 }: {
   team: Team;
   users: User[];
   players: Player[];
+  /** Players already chosen as playing captain of a different team. */
+  takenPlayerIds?: string[];
 }) {
   const router = useRouter();
   const [name, setName] = useState(team.name);
@@ -48,6 +51,7 @@ export function TeamCard({
 
   const captain = users.find((u) => u.id === team.captain_user_id);
   const nameChanged = name.trim() !== team.name;
+  const captainOptions = players.filter((p) => !takenPlayerIds.includes(p.id));
 
   const avatarLabel = captain
     ? (captain.display_name ?? captain.email).slice(0, 1).toUpperCase()
@@ -84,6 +88,7 @@ export function TeamCard({
       body: fd,
     });
     setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
 
     if (!res.ok) {
       const b = await res.json().catch(() => ({}));
@@ -113,8 +118,10 @@ export function TeamCard({
         <div className="flex items-start gap-3">
           <div
             className="relative group cursor-pointer shrink-0"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => !uploading && fileInputRef.current?.click()}
             title="Upload team logo"
+            role="button"
+            aria-label="Upload team logo"
           >
             {team.logo_url ? (
               <img
@@ -200,12 +207,16 @@ export function TeamCard({
             className="h-9 w-full rounded-md bg-[var(--bg-1)] border border-[var(--line-1)] px-2.5 text-[12px] text-[var(--fg-1)] focus:outline-none focus:border-[var(--accent-line)]"
           >
             <option value="">— none —</option>
-            {players.map((p) => (
+            {captainOptions.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} ({p.grade})
               </option>
             ))}
           </select>
+          <p className="text-[10px] text-[var(--fg-4)]">
+            Not bid on. When drawn, the auctioneer assigns them to this team at
+            their category&apos;s average price.
+          </p>
         </div>
 
         {/* Team name */}

@@ -19,7 +19,7 @@ import {
 export function ConsoleClient({ auctionId }: { auctionId: string }) {
   const { state, loading, refresh } = useAuctionState(auctionId, 1500);
   const [busy, setBusy] = useState<
-    null | "unsold" | "sell" | "undo" | "pause" | "resume" | "round2"
+    null | "unsold" | "sell" | "undo" | "pause" | "resume" | "round2" | "assign"
   >(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -35,6 +35,10 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
   ? getBasePrice(auction?.config, current.player.grade)
   : 0;
   const currentBid = highestBid?.amount ?? 0;
+
+  // A playing captain is never bid on — the auctioneer assigns them.
+  const captainTeam = current?.captainTeam ?? null;
+  const isCaptain = !!captainTeam;
 
   async function call(endpoint: string, label: string, confirmMsg?: string) {
     if (confirmMsg && !window.confirm(confirmMsg)) return;
@@ -167,25 +171,57 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
             teams={teams.map((t) => ({ id: t.id, name: t.name }))}
           />
 
+          {isCaptain && captainTeam && (
+            <div className="rounded-lg border border-[var(--accent-line)] bg-[var(--bg-1)] p-4">
+              <div className="text-[13px] font-medium text-[var(--accent)]">
+                Playing captain of {captainTeam.name}
+              </div>
+              <p className="text-[12px] text-[var(--fg-3)] mt-1">
+                Bidding is disabled. Assigning deducts the average price of the
+                other sold {current?.player?.grade} players from{" "}
+                {captainTeam.name}&apos;s purse.
+              </p>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2">
-            <Button
-              onClick={() => call("sell", "sell")}
-              loading={busy === "sell"}
-              disabled={busy !== null || !highestBid || !isLive}
-            >
-              <Check size={14} strokeWidth={2} />
-              Sell to{" "}
-              {teams.find((t) => t.id === highestBid?.team_id)?.name ?? "…"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => call("undo-bid", "undo")}
-              loading={busy === "undo"}
-              disabled={busy !== null || !highestBid}
-            >
-              <Undo2 size={14} strokeWidth={2} />
-              Undo last bid
-            </Button>
+            {isCaptain && captainTeam ? (
+              <Button
+                onClick={() =>
+                  call(
+                    "assign-captain",
+                    "assign",
+                    `Assign ${current?.player?.name} to ${captainTeam.name}?\n\nThe average price of the other sold ${current?.player?.grade} players will be deducted from ${captainTeam.name}'s purse.`
+                  )
+                }
+                loading={busy === "assign"}
+                disabled={busy !== null || !isLive}
+              >
+                <Check size={14} strokeWidth={2} />
+                Assign to {captainTeam.name}
+              </Button>
+            ) : (
+              <>
+                <Button
+                  onClick={() => call("sell", "sell")}
+                  loading={busy === "sell"}
+                  disabled={busy !== null || !highestBid || !isLive}
+                >
+                  <Check size={14} strokeWidth={2} />
+                  Sell to{" "}
+                  {teams.find((t) => t.id === highestBid?.team_id)?.name ?? "…"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => call("undo-bid", "undo")}
+                  loading={busy === "undo"}
+                  disabled={busy !== null || !highestBid}
+                >
+                  <Undo2 size={14} strokeWidth={2} />
+                  Undo last bid
+                </Button>
+              </>
+            )}
             <Button
               variant="danger"
               onClick={() => call("unsold", "unsold")}

@@ -27,7 +27,7 @@ export async function POST(
     return NextResponse.json({ error: "Already live" }, { status: 409 });
   }
 
-  // Guard: need teams
+  // Guard: need exactly 6 teams
   const { count: teamCount } = await admin
     .from("teams").select("id", { count: "exact", head: true })
     .eq("auction_id", id);
@@ -49,7 +49,10 @@ export async function POST(
     );
   }
 
-  // Seed auction_players (idempotent — upserts by unique constraint)
+  // Seed auction_players (idempotent — upserts by unique constraint).
+  // Playing captains are seeded like everyone else: they are drawn normally,
+  // and the state endpoint flags them so the auctioneer assigns them to their
+  // team instead of opening bidding.
   const { data: players } = await admin
     .from("players").select("id").eq("status", "IN_POOL");
 

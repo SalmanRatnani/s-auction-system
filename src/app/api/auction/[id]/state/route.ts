@@ -3,6 +3,23 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CATEGORY_ORDER } from "@/constants/categories";
 
+/** Supabase returns embedded joins as an object OR a one-element array. */
+function one<T>(v: T | T[] | null | undefined): T | null {
+  if (v == null) return null;
+  return Array.isArray(v) ? (v[0] ?? null) : v;
+}
+
+type CurrentPlayer = {
+  id: string;
+  player_code: string;
+  name: string;
+  grade: string;
+  image_url: string | null;
+  achievements: string | null;
+  playing_centre: string | null;
+  playing_hand: string | null;
+};
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -38,8 +55,7 @@ export async function GET(
       id, status, round, sold_price, sold_to_team_id,
       player:players (
         id, player_code, name, grade, image_url,
-        achievements, participation_history, playing_centre, played_mira_bhayandar,
-        playing_hand
+        achievements, playing_centre, playing_hand
       )
     `
     )
@@ -47,12 +63,11 @@ export async function GET(
     .eq("status", "CURRENT")
     .maybeSingle();
 
-  // Normalize the player object (Supabase returns joins as arrays sometimes)
-  const currentPlayer = rawCurrent?.player
-    ? (Array.isArray(rawCurrent.player) ? rawCurrent.player[0] : rawCurrent.player)
-    : null;
+  const currentPlayer = one<CurrentPlayer>(
+    rawCurrent?.player as CurrentPlayer | CurrentPlayer[] | null | undefined
+  );
 
-  // --- Check if the current player is a Captain ---
+  // --- Is the current player a team's playing captain? ---
   let captainTeam: { id: string; name: string } | null = null;
   if (currentPlayer?.id) {
     const { data: team } = await admin
@@ -60,16 +75,14 @@ export async function GET(
       .select("id, name")
       .eq("auction_id", id)
       .eq("captain_player_id", currentPlayer.id)
+      .limit(1)
       .maybeSingle();
     captainTeam = team ?? null;
   }
 
-  // Build the clean `current` object for the frontend
-  const current = rawCurrent ? {
-    ...rawCurrent,
-    player: currentPlayer,
-    captainTeam,
-  } : null;
+  const current = rawCurrent
+    ? { ...rawCurrent, player: currentPlayer, captainTeam }
+    : null;
 
   // --- Highest non-undone bid for that player ---
   let highestBid: {
@@ -100,12 +113,12 @@ export async function GET(
 
   const counts: Record<string, number> = {};
   CATEGORY_ORDER.forEach((c) => (counts[c] = 0));
-  (pending ?? []).forEach(
-    (row: { players: { grade: string } | { grade: string }[] }) => {
-      const p = Array.isArray(row.players) ? row.players[0] : row.players;
-      if (p?.grade) counts[p.grade] = (counts[p.grade] ?? 0) + 1;
-    }
-  );
+  (pending ?? []).forEach((row) => {
+    const p = one<{ grade: string }>(
+      row.players as { grade: string } | { grade: string }[] | null
+    );
+    if (p?.grade) counts[p.grade] = (counts[p.grade] ?? 0) + 1;
+  });
 
   // --- Teams ---
   const { data: teamsRaw } = await admin
@@ -135,15 +148,14 @@ export async function GET(
   // Powers the "one player per category per team" rule in the bid UI.
   const { data: rosters } = await admin
     .from("team_players")
-    .select(`
-      team_id,
-      player:players (grade)
-    `)
+    .select(`team_id, player:players (grade)`)
     .eq("auction_id", id);
 
   const gradesByTeam: Record<string, string[]> = {};
   (rosters ?? []).forEach((r) => {
-    const p = Array.isArray(r.player) ? r.player[0] : r.player;
+    const p = one<{ grade: string | null }>(
+      r.player as { grade: string | null } | { grade: string | null }[] | null
+    );
     if (!p?.grade) return;
     (gradesByTeam[r.team_id] ??= []).push(p.grade);
   });

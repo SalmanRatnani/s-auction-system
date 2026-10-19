@@ -67,6 +67,10 @@ const increment = current?.player?.grade
   const alreadyOwnsCategory =
     !!(myTeam && currentGrade && myTeam.won_grades?.includes(currentGrade));
 
+  // A playing captain is assigned by the auctioneer, never bid on.
+  const captainTeam = current?.captainTeam ?? null;
+  const isCaptain = !!captainTeam;
+
   async function placeBid(amount: number) {
     unlockAudio();
     if (!current) return;
@@ -95,6 +99,7 @@ const increment = current?.player?.grade
     !squadOk ||
     isMyLead ||
     alreadyOwnsCategory ||
+    isCaptain ||
     busy;
 
   return (
@@ -150,7 +155,18 @@ const increment = current?.player?.grade
             currentBid={currentBid}
             teams={teams.map((t) => ({ id: t.id, name: t.name }))}
           />
-          {alreadyOwnsCategory && myTeam && currentGrade && (
+          {isCaptain && captainTeam && (
+            <div className="rounded-lg border border-[var(--accent-line)] bg-[var(--bg-1)] p-4">
+              <div className="text-[13px] font-medium text-[var(--accent)]">
+                {current.player.name} is the playing captain of {captainTeam.name}
+              </div>
+              <p className="text-[12px] text-[var(--fg-3)] mt-1">
+                Bidding is closed for this player. The auctioneer will assign
+                them to {captainTeam.name}.
+              </p>
+            </div>
+          )}
+          {alreadyOwnsCategory && !isCaptain && myTeam && currentGrade && (
             <div className="rounded-lg border border-[var(--warning-line)] bg-[var(--warning-bg)] p-4">
               <div className="text-[13px] text-[var(--warning)] font-medium">
                 You already own a {currentGrade} player
@@ -173,7 +189,7 @@ const increment = current?.player?.grade
             </div>
           )}
 
-          {!isMyLead && isLive && (
+          {!isMyLead && !isCaptain && isLive && (
   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
     <Button
       onClick={() => placeBid(nextBid)}

@@ -4,11 +4,18 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
+// The Google Form now collects ONLY:
+// Full Name, Playing Hand, Playing Centre, Achievements, Player Photo.
 type Body = {
   responseId: string;
   submittedAt: string;
-  data: Record<string, unknown>;
-  filePaths: { image?: { bucket: string; path: string }; proof?: { bucket: string; path: string } };
+  data: {
+    name?: unknown;
+    playingHand?: unknown;
+    playingCentre?: unknown;
+    achievements?: unknown;
+  } & Record<string, unknown>;
+  filePaths: { image?: { bucket: string; path: string } };
   warning?: string;
 };
 
@@ -30,6 +37,22 @@ function verifySignature(rawBody: string, signature: string | null) {
   }
 }
 
+/** Trimmed string, or null when empty / not a string. */
+function clean(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t.length > 0 ? t : null;
+}
+
+/** "Right", "right-handed", "R" → "Right"; same for Left. Anything else → null. */
+function normalizeHand(v: unknown): "Right" | "Left" | null {
+  const s = clean(v)?.toLowerCase();
+  if (!s) return null;
+  if (s.startsWith("r")) return "Right";
+  if (s.startsWith("l")) return "Left";
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   const raw = await request.text();
 
@@ -42,6 +65,14 @@ export async function POST(request: NextRequest) {
     body = JSON.parse(raw);
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const name = clean(body.data?.name);
+  if (!body.responseId || !name) {
+    return NextResponse.json(
+      { error: "responseId and name are required" },
+      { status: 400 }
+    );
   }
 
   const admin = createAdminClient();
@@ -59,32 +90,36 @@ export async function POST(request: NextRequest) {
 
   // Public URL for player image (from player-images bucket)
   let imageUrl: string | null = null;
-  if (body.filePaths.image?.path) {
+  if (body.filePaths?.image?.path) {
     const { data } = admin.storage
       .from("player-images")
       .getPublicUrl(body.filePaths.image.path);
     imageUrl = data.publicUrl;
   }
 
-  // For age proof we store ONLY the storage path (private bucket, signed URL later)
-  const proofPath = body.filePaths.proof?.path ?? null;
-
   const { data, error } = await admin
     .from("registrations")
     .insert({
       google_response_id: body.responseId,
       raw: body,
-      name: body.data.name as string,
-      dob: body.data.dob as string,
-      phone: body.data.phone as string,
-      playing_centre: body.data.playingCentre as string,
-      participation_history: body.data.participationHistory as string,
-      played_mira_bhayandar: body.data.playedMiraBhayandar as boolean,
-      achievements: (body.data.achievements as string) ?? null,
-      age_proof_type: body.data.ageProofType as string,
+
+      // Collected fields
+      name,
+      playing_hand: normalizeHand(body.data.playingHand),
+      playing_centre: clean(body.data.playingCentre),
+      achievements: clean(body.data.achievements),
       image_url: imageUrl,
-      age_proof_url: proofPath,
-      submitted_at: body.submittedAt,
+
+      // No longer collected → always null
+      dob: null,
+      age: null,
+      phone: null,
+      participation_history: null,
+      played_mira_bhayandar: null,
+      age_proof_url: null,
+      age_proof_type: null,
+
+      submitted_at: body.submittedAt ?? new Date().toISOString(),
       status: "PENDING",
     })
     .select("id")

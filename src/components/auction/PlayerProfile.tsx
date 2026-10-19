@@ -13,7 +13,7 @@ export type PlayerProfileData = {
   grade: string;
   image_url: string | null;
   playing_centre: string | null;
-  played_mira_bhayandar: boolean | null;
+  playing_hand: string | null;
   achievements: string | null;
   // Sale info (if sold)
   sale: {
@@ -79,11 +79,8 @@ export function PlayerProfile({
               {player.playing_centre && (
                 <Meta label="Playing centre" value={player.playing_centre} />
               )}
-              {player.played_mira_bhayandar !== null && (
-                <Meta
-                  label="Mira Bhayandar"
-                  value={player.played_mira_bhayandar ? "Yes" : "No"}
-                />
+              {player.playing_hand && (
+                <Meta label="Playing hand" value={player.playing_hand} />
               )}
             </div>
           </div>

@@ -31,10 +31,10 @@ async function Inner({ params }: { params: Promise<{ id: string }> }) {
 
   if (!reg) notFound();
 
-  // Check for duplicates based only on name (since phone is no longer collected)
+  // Duplicate check is name-only (phone / DOB are no longer collected)
   const { data: dupes } = await supabase
     .from("registrations")
-    .select("id, name, status, submitted_at, image_url, age")
+    .select("id, name, status, submitted_at, image_url")
     .neq("id", id)
     .ilike("name", reg.name)
     .limit(10);

@@ -20,9 +20,8 @@ export function PlayerOnBlock({
     grade: string;
     image_url: string | null;
     achievements: string | null;
-    participation_history: string | null;
     playing_centre: string | null;
-    played_mira_bhayandar: boolean | null;
+    playing_hand: string | null;
   };
   highestBid: { id: string; amount: number; team_id: string; created_at: string } | null;
   basePrice: number;
@@ -69,11 +68,8 @@ export function PlayerOnBlock({
             {player.playing_centre && (
               <Meta label="Playing centre" value={player.playing_centre} />
             )}
-            {player.played_mira_bhayandar !== null && (
-              <Meta
-                label="Mira Bhayandar"
-                value={player.played_mira_bhayandar ? "Played" : "Not played"}
-              />
+            {player.playing_hand && (
+              <Meta label="Playing hand" value={player.playing_hand} />
             )}
           </div>
 
@@ -84,17 +80,6 @@ export function PlayerOnBlock({
               </div>
               <p className="text-[13px] text-[var(--fg-2)] mt-1.5 whitespace-pre-wrap leading-relaxed">
                 {player.achievements}
-              </p>
-            </div>
-          )}
-
-          {player.participation_history && (
-            <div className="mt-4">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
-                Participation
-              </div>
-              <p className="text-[13px] text-[var(--fg-3)] mt-1.5 whitespace-pre-wrap leading-relaxed">
-                {player.participation_history}
               </p>
             </div>
           )}
