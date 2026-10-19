@@ -68,7 +68,10 @@ export async function POST(
     query = query.eq("players.grade", category);
   }
 
-  const { data: candidates } = await query;
+  const { data: candidates, error: candidatesError } = await query;
+  if (candidatesError) {
+    return NextResponse.json({ error: candidatesError.message }, { status: 500 });
+  }
 
   if (!candidates || candidates.length === 0) {
     return NextResponse.json(
@@ -77,15 +80,60 @@ export async function POST(
     );
   }
 
-  // Pick one at random
-  const picked = candidates[Math.floor(Math.random() * candidates.length)];
+  // Playing captains are optional. When configured, defer their draw until
+  // all ordinary players of the *same grade* have had an auction attempt.
+  // This gives the captain-assignment price a meaningful comparison sample.
+  const { data: captainTeams, error: captainsError } = await admin
+    .from("teams")
+    .select("captain_player_id")
+    .eq("auction_id", id)
+    .not("captain_player_id", "is", null);
+  if (captainsError) {
+    return NextResponse.json({ error: captainsError.message }, { status: 500 });
+  }
 
-  // Set as CURRENT
-  const { error } = await admin
+  const captainPlayerIds = new Set(
+    (captainTeams ?? [])
+      .map((t) => t.captain_player_id)
+      .filter((captainId): captainId is string => captainId !== null)
+  );
+  const gradeOf = (row: (typeof candidates)[number]) => {
+    const player = Array.isArray(row.players) ? row.players[0] : row.players;
+    return player?.grade ?? null;
+  };
+  const pendingOrdinaryGrades = new Set(
+    candidates
+      .filter((row) => !captainPlayerIds.has(row.player_id))
+      .map(gradeOf)
+      .filter((grade): grade is string => grade !== null)
+  );
+  const eligible = candidates.filter(
+    (row) =>
+      !captainPlayerIds.has(row.player_id) ||
+      !pendingOrdinaryGrades.has(gradeOf(row) ?? "")
+  );
+
+  if (eligible.length === 0) {
+    return NextResponse.json({ error: "No eligible player can be drawn yet" }, { status: 409 });
+  }
+
+  // Still random among eligible players. Captain players are NOT permanently
+  // excluded; after ordinary players leave PENDING they become eligible.
+  const picked = eligible[Math.floor(Math.random() * eligible.length)];
+
+  // Claim only a still-pending player. Another auctioneer might have drawn
+  // the same player while this request was in flight.
+  const { data: claimed, error } = await admin
     .from("auction_players")
     .update({ status: "CURRENT" })
-    .eq("id", picked.id);
+    .eq("id", picked.id)
+    .eq("status", "PENDING")
+    .select("id")
+    .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!claimed) {
+    return NextResponse.json({ error: "Player was drawn by another request. Please retry." }, { status: 409 });
+  }
 
   await admin.from("audit_log").insert({
     actor_user_id: user.id,
