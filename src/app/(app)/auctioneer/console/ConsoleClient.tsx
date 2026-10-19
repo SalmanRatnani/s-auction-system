@@ -20,7 +20,7 @@ import {
 export function ConsoleClient({ auctionId }: { auctionId: string }) {
   const { state, loading, refresh } = useAuctionState(auctionId, 1500);
   const [busy, setBusy] = useState<
-    null | "unsold" | "sell" | "undo" | "pause" | "resume" | "round2" | "assign"
+    null | "unsold" | "sell" | "undo" | "pause" | "resume" | "round2"
   >(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -179,51 +179,25 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
                 Playing captain of {captainTeam.name}
               </div>
               <p className="text-[12px] text-[var(--fg-3)] mt-1">
-                Bidding is disabled. Assigning deducts the average price of the
-                other sold {current?.player?.grade} players from{" "}
-                {captainTeam.name}&apos;s purse.
+                Playing captains are reserved for Final allotment after Round 2.
               </p>
             </div>
           )}
 
           <div className="flex flex-wrap gap-2">
-            {isCaptain && captainTeam ? (
-              <Button
-                onClick={() =>
-                  call(
-                    "assign-captain",
-                    "assign",
-                    `Assign ${current?.player?.name} to ${captainTeam.name}?\n\nThe average price of the other sold ${current?.player?.grade} players will be deducted from ${captainTeam.name}'s purse.`
-                  )
-                }
-                loading={busy === "assign"}
-                disabled={busy !== null || !isLive}
-              >
+            {!isCaptain && (
+            <>
+              <Button onClick={() => call("sell", "sell")}
+                loading={busy === "sell"} disabled={busy !== null || !highestBid || !isLive}>
                 <Check size={14} strokeWidth={2} />
-                Assign to {captainTeam.name}
+                Sell to {teams.find((t) => t.id === highestBid?.team_id)?.name ?? "…"}
               </Button>
-            ) : (
-              <>
-                <Button
-                  onClick={() => call("sell", "sell")}
-                  loading={busy === "sell"}
-                  disabled={busy !== null || !highestBid || !isLive}
-                >
-                  <Check size={14} strokeWidth={2} />
-                  Sell to{" "}
-                  {teams.find((t) => t.id === highestBid?.team_id)?.name ?? "…"}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => call("undo-bid", "undo")}
-                  loading={busy === "undo"}
-                  disabled={busy !== null || !highestBid}
-                >
-                  <Undo2 size={14} strokeWidth={2} />
-                  Undo last bid
-                </Button>
-              </>
-            )}
+              <Button variant="outline" onClick={() => call("undo-bid", "undo")}
+                loading={busy === "undo"} disabled={busy !== null || !highestBid}>
+                <Undo2 size={14} strokeWidth={2} /> Undo last bid
+              </Button>
+            </>
+          )}
             <Button
               variant="danger"
               onClick={() => call("unsold", "unsold")}

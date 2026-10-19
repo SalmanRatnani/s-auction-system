@@ -19,6 +19,13 @@ export async function POST(
   }
 
   const admin = createAdminClient();
+  const { data: auction, error: auctionError } = await admin
+    .from("auctions").select("captains_finalized_at").eq("id", id).maybeSingle();
+  if (auctionError) return NextResponse.json({ error: auctionError.message }, { status: 500 });
+  if (!auction) return NextResponse.json({ error: "Auction not found" }, { status: 404 });
+  if (!auction.captains_finalized_at) {
+    return NextResponse.json({ error: "Finalize playing captains before ending the auction." }, { status: 409 });
+  }
   const { error } = await admin
     .from("auctions")
     .update({ status: "ENDED", ended_at: new Date().toISOString() })

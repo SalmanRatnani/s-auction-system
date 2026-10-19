@@ -27,7 +27,10 @@ export async function POST(
     .select("player_id")
     .eq("auction_id", id);
   if (apErr) return NextResponse.json({ error: apErr.message }, { status: 500 });
-  const playerIds = (aps ?? []).map((r) => r.player_id);
+  const { data: rosterPlayerRows, error: rosterErr } = await admin
+    .from("team_players").select("player_id").eq("auction_id", id);
+  if (rosterErr) return NextResponse.json({ error: rosterErr.message }, { status: 500 });
+  const playerIds = [...new Set([...(aps ?? []).map((r) => r.player_id), ...(rosterPlayerRows ?? []).map((r) => r.player_id)])];
 
   // 2) Delete in FK-safe order — abort on any failure
   const r1 = await admin.from("purse_ledger").delete().eq("auction_id", id);
@@ -82,7 +85,7 @@ export async function POST(
   // 5) Flip auction back to DRAFT
   const { error: aErr } = await admin
     .from("auctions")
-    .update({ status: "DRAFT", started_at: null, ended_at: null })
+    .update({ status: "DRAFT", started_at: null, ended_at: null, captains_finalized_at: null, round_two_started_at: null })
     .eq("id", id);
   if (aErr) return NextResponse.json({ error: aErr.message }, { status: 500 });
 
