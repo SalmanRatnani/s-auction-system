@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Play, Square, RotateCcw, Pause, RefreshCw, Users } from "lucide-react";
+import { Play, Square, RotateCcw, Pause, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,7 @@ type Auction = {
 export function AuctionControls({ auction }: { auction: Auction }) {
   const router = useRouter();
   const [busy, setBusy] = useState<
-    "start" | "end" | "reset" | "mode" | "pause" | "resume" | "finalize" | null
+    "start" | "end" | "reset" | "mode" | "pause" | "resume" | null
   >(null);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(
     null
@@ -53,19 +53,6 @@ export function AuctionControls({ auction }: { auction: Auction }) {
         ? "Auction paused."
         : "Auction resumed.";
     setMsg({ kind: "ok", text });
-    router.refresh();
-  }
-
-  async function finalizeCaptains() {
-    if (!window.confirm("Finalize both playing-captain slots after Round 2? This permanently deducts their calculated prices from team purses and cannot be undone without a reset.")) return;
-    setBusy("finalize");
-    setMsg(null);
-    const res = await fetch(`/api/auction/${auction.id}/finalize-captains`, { method: "POST" });
-    const body = await res.json().catch(() => ({}));
-    setBusy(null);
-    setMsg(res.ok
-      ? { kind: "ok", text: `Finalized ${body.result?.count ?? 0} playing captains.` }
-      : { kind: "err", text: body.error ?? "Finalization failed" });
     router.refresh();
   }
 
@@ -154,15 +141,11 @@ export function AuctionControls({ auction }: { auction: Auction }) {
             variant="outline"
             onClick={() => call("end")}
             loading={busy === "end"}
-            disabled={(!isLive && !isPaused) || busy !== null}
+            disabled={!isLive || busy !== null}
             size="sm"
           >
             <Square size={13} strokeWidth={2} />
             End
-          </Button>
-          <Button variant="outline" onClick={finalizeCaptains}
-            loading={busy === "finalize"} disabled={!isLive || busy !== null} size="sm">
-            <Users size={13} strokeWidth={2} /> Final allotment
           </Button>
           <Button
             variant="danger"

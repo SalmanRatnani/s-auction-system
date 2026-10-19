@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_BASE_PRICES } from "@/constants/categories";
 
 export async function POST(
   _req: NextRequest,
@@ -20,11 +21,23 @@ export async function POST(
 
   const admin = createAdminClient();
   const { data: auction, error: auctionError } = await admin
-    .from("auctions").select("captains_finalized_at").eq("id", id).maybeSingle();
+    .from("auctions").select("status, captains_finalized_at").eq("id", id).maybeSingle();
   if (auctionError) return NextResponse.json({ error: auctionError.message }, { status: 500 });
   if (!auction) return NextResponse.json({ error: "Auction not found" }, { status: 404 });
+  if (auction.status !== "LIVE") {
+    return NextResponse.json({ error: "Resume the auction before ending it." }, { status: 409 });
+  }
+  // Playing captains are charged at their category end. Reconcile any
+  // captain slots in empty categories before the auction may be ended.
+  // The RPC validates all ordinary draws and runs allotments atomically.
   if (!auction.captains_finalized_at) {
-    return NextResponse.json({ error: "Finalize playing captains before ending the auction." }, { status: 409 });
+    const { error: finalizeError } = await userClient.rpc("finalize_playing_captains", {
+      p_auction_id: id,
+      p_default_base_prices: DEFAULT_BASE_PRICES,
+    });
+    if (finalizeError) {
+      return NextResponse.json({ error: `Cannot end auction: ${finalizeError.message}` }, { status: 409 });
+    }
   }
   const { error } = await admin
     .from("auctions")
