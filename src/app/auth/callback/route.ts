@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 
   const role = (data.user?.app_metadata?.role as string) ?? "VIEWER";
   const home = ROLE_HOME[role] ?? "/dashboard";
-  const target = next && next.startsWith("/") ? next : home;
+  const target = next && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : home;
 
   // Mutate the SAME response — cookies already attached.
   response.headers.set("Location", `${origin}${target}`);

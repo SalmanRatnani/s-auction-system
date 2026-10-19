@@ -22,7 +22,8 @@ function LoginForm() {
   const supabase = createClient();
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") ?? "/dashboard";
+  const requestedNext = params.get("next");
+  const next = requestedNext?.startsWith("/") && !requestedNext.startsWith("//") && !requestedNext.includes("\\") ? requestedNext : "/dashboard";
   const reason = params.get("reason");
 
   const [mode, setMode] = useState<Mode>(
@@ -62,7 +63,7 @@ function LoginForm() {
     setMsg(null);
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: redirectTo(next), shouldCreateUser: true },
+      options: { emailRedirectTo: redirectTo(next), shouldCreateUser: false },
     });
     setLoading(false);
     if (error) {
@@ -114,7 +115,7 @@ function LoginForm() {
     } else {
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: redirectTo(next) },
+        options: { emailRedirectTo: redirectTo(next), shouldCreateUser: false },
       });
       if (error) setMsg({ kind: "err", text: error.message });
       else setMsg({ kind: "ok", text: "Magic link sent. Check your inbox." });
