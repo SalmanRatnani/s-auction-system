@@ -23,8 +23,8 @@ export async function POST(
   const { data: auction } = await admin
     .from("auctions").select("*").eq("id", id).single();
   if (!auction) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (auction.status === "LIVE") {
-    return NextResponse.json({ error: "Already live" }, { status: 409 });
+  if (auction.status !== "DRAFT") {
+    return NextResponse.json({ error: "Only DRAFT auctions can start. Resume paused auctions instead." }, { status: 409 });
   }
 
   // Guard: need exactly 6 teams
@@ -49,10 +49,7 @@ export async function POST(
     );
   }
 
-  // Seed auction_players (idempotent — upserts by unique constraint).
-  // Playing captains are seeded like everyone else: they are drawn normally,
-  // and the state endpoint flags them so the auctioneer assigns them to their
-  // team instead of opening bidding.
+  // Seed only ordinary players. Both reserved playing captains are allotted last.
   const { data: allPlayers } = await admin
     .from("players").select("id").eq("status", "IN_POOL");
   const { data: capTeams, error: capErr } = await admin.from("teams")

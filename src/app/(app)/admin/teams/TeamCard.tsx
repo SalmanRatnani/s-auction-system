@@ -234,8 +234,8 @@ export function TeamCard({
           </select>
           <p className="text-[10px] text-[var(--fg-4)]">
             Optional — leave empty if neither captain plays. If selected, this
-            registered player is drawn after ordinary players in their grade,
-            then assigned at the average sold price (or base price if none sold).
+            registered player is reserved until after Round 2, then assigned at
+            the category average (or base price when no one sold).
           </p>
         </div>
 

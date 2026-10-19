@@ -129,11 +129,11 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
               call(
                 "round2",
                 "round2",
-                "Re-queue all unsold players?\n\nThey'll become available for a second round."
+                "Start Round 2 with unsold players, following A+ → G1 again? Round 1 bid history will be retained."
               )
             }
             loading={busy === "round2"}
-            disabled={busy !== null}
+            disabled={busy !== null || !isLive || hasCurrent || Object.values(counts).some((n) => n > 0)}
           >
             <RotateCcw size={13} strokeWidth={2} />
             Round 2
