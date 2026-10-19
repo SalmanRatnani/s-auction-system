@@ -232,8 +232,9 @@ export function TeamCard({
             ))}
           </select>
           <p className="text-[10px] text-[var(--fg-4)]">
-            Not bid on. When drawn, the auctioneer assigns them to this team at
-            their category&apos;s average price.
+            Optional — leave empty if neither captain plays. If selected, this
+            registered player is drawn after ordinary players in their grade,
+            then assigned at the average sold price (or base price if none sold).
           </p>
         </div>
 
