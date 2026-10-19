@@ -11,7 +11,6 @@ import { getBasePrice } from "@/constants/categories";
 import {
   Pause,
   Play,
-  RotateCcw,
   Check,
   Undo2,
   X,
@@ -20,7 +19,7 @@ import {
 export function ConsoleClient({ auctionId }: { auctionId: string }) {
   const { state, loading, refresh } = useAuctionState(auctionId, 1500);
   const [busy, setBusy] = useState<
-    null | "unsold" | "skip" | "sell" | "undo" | "pause" | "resume" | "round2"
+    null | "unsold" | "skip" | "sell" | "undo" | "pause" | "resume"
   >(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -124,22 +123,7 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
               Resume
             </Button>
           )}
-          {!isRetry && !isLegacyRoundTwo && <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              call(
-                "round2",
-                "round2",
-                "Start Round 2 with unsold players, following A+ → G1 again? Round 1 bid history will be retained."
-              )
-            }
-            loading={busy === "round2"}
-            disabled={busy !== null || !isLive || hasCurrent || Object.values(counts).some((n) => n > 0) || isRetry || isLegacyRoundTwo}
-          >
-            <RotateCcw size={13} strokeWidth={2} />
-            Round 2 (legacy only)
-          </Button>}
+
         </div>
       </header>
 
