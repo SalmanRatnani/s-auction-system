@@ -42,6 +42,7 @@ export async function PATCH(
   const body = (await request.json().catch(() => ({}))) as {
     name?: string;
     captain_user_id?: string | null;
+    captain_player_id?: string | null;
   };
 
   const update: Record<string, unknown> = {};
@@ -57,7 +58,7 @@ export async function PATCH(
     update.name = trimmed;
   }
 
-  // Only controller can assign/reassign captain
+  // Only controller can assign/reassign captain user
   if ("captain_user_id" in body) {
     if (!isController) {
       return NextResponse.json({ error: "Only the controller can assign captains" }, { status: 403 });
@@ -75,6 +76,14 @@ export async function PATCH(
           .eq("id", body.captain_user_id);
       }
     }
+  }
+
+  // NEW: Only controller can assign/reassign playing captain (player)
+  if ("captain_player_id" in body) {
+    if (!isController) {
+      return NextResponse.json({ error: "Only the controller can assign playing captains" }, { status: 403 });
+    }
+    update.captain_player_id = body.captain_player_id ?? null;
   }
 
   if (Object.keys(update).length === 0) {

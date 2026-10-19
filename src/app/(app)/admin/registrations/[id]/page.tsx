@@ -1,7 +1,5 @@
 import { notFound } from "next/navigation";
-import { ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { RoleGuard } from "@/components/guards/RoleGuard";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,20 +31,12 @@ async function Inner({ params }: { params: Promise<{ id: string }> }) {
 
   if (!reg) notFound();
 
-  let proofUrl: string | null = null;
-  if (reg.age_proof_url) {
-    const admin = createAdminClient();
-    const { data } = await admin.storage
-      .from("age-proofs")
-      .createSignedUrl(reg.age_proof_url, 60);
-    proofUrl = data?.signedUrl ?? null;
-  }
-
+  // Check for duplicates based only on name (since phone is no longer collected)
   const { data: dupes } = await supabase
     .from("registrations")
-    .select("id, name, phone, status, submitted_at, image_url, age")
+    .select("id, name, status, submitted_at, image_url, age")
     .neq("id", id)
-    .or(`phone.eq.${reg.phone},name.ilike.${reg.name}`)
+    .ilike("name", reg.name)
     .limit(10);
 
   return (
@@ -83,77 +73,22 @@ async function Inner({ params }: { params: Promise<{ id: string }> }) {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <Card>
           <CardHeader>
             <CardTitle>Form details</CardTitle>
           </CardHeader>
           <CardBody>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px]">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4 text-[13px]">
               <Field label="Full Name" value={reg.name} />
-              <Field label="DOB" value={reg.dob} />
-              <Field label="Age (auto)" value={reg.age} />
-              <Field label="Phone" value={reg.phone} />
+              <Field label="Playing Hand" value={reg.playing_hand} />
               <Field label="Playing Centre" value={reg.playing_centre} />
-              <Field
-                label="Played Mira Bhayandar"
-                value={reg.played_mira_bhayandar ? "Yes" : "No"}
-              />
-              <Field
-                label="Age Proof Type"
-                value={reg.age_proof_type}
-                span={2}
-              />
-              <Field
-                label="Participation History"
-                value={reg.participation_history}
-                span={2}
-              />
               <Field
                 label="Achievements"
                 value={reg.achievements}
-                span={2}
+                className="sm:col-span-2"
               />
             </dl>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Age proof</CardTitle>
-          </CardHeader>
-          <CardBody>
-            {proofUrl ? (
-              <div className="space-y-3">
-                <a
-                  href={proofUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 text-[13px] text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors"
-                >
-                  <ExternalLink size={13} strokeWidth={2} />
-                  Open in new tab
-                </a>
-                {reg.age_proof_url?.endsWith(".pdf") ? (
-                  <p className="text-[12px] text-[var(--fg-4)]">
-                    PDF — opens in new tab.
-                  </p>
-                ) : (
-                  <img
-                    src={proofUrl}
-                    alt="Age proof"
-                    className="rounded-lg border border-[var(--line-1)] max-h-96"
-                  />
-                )}
-                <p className="text-[11px] text-[var(--fg-4)]">
-                  Signed URL valid for 60 s. Every access is logged.
-                </p>
-              </div>
-            ) : (
-              <p className="text-[13px] text-[var(--fg-4)]">
-                No proof uploaded.
-              </p>
-            )}
           </CardBody>
         </Card>
       </div>
@@ -178,7 +113,6 @@ async function Inner({ params }: { params: Promise<{ id: string }> }) {
                   />
                 )}
                 <span className="flex-1 text-[var(--fg-1)]">{d.name}</span>
-                <span className="text-[11px] text-[var(--fg-4)]">{d.phone}</span>
                 <Badge
                   tone={
                     d.status === "APPROVED"
@@ -208,14 +142,14 @@ async function Inner({ params }: { params: Promise<{ id: string }> }) {
 function Field({
   label,
   value,
-  span,
+  className,
 }: {
   label: string;
   value: unknown;
-  span?: 1 | 2;
+  className?: string;
 }) {
   return (
-    <div className={span === 2 ? "col-span-2" : undefined}>
+    <div className={className}>
       <dt className="text-[11px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
         {label}
       </dt>

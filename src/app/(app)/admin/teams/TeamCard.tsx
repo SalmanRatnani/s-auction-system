@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Check } from "lucide-react";
+import { Trash2, Check, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardBody } from "@/components/ui/card";
@@ -15,24 +15,40 @@ type User = {
   role: string;
 };
 
+type Player = {
+  id: string;
+  name: string;
+  grade: string;
+};
+
 type Team = {
   id: string;
   name: string;
   logo_url: string | null;
   captain_user_id: string | null;
+  captain_player_id: string | null;
   initial_purse: number;
 };
 
-export function TeamCard({ team, users }: { team: Team; users: User[] }) {
+export function TeamCard({
+  team,
+  users,
+  players,
+}: {
+  team: Team;
+  users: User[];
+  players: Player[];
+}) {
   const router = useRouter();
   const [name, setName] = useState(team.name);
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const captain = users.find((u) => u.id === team.captain_user_id);
   const nameChanged = name.trim() !== team.name;
 
-  // Avatar: captain's initial if assigned, else team's first 2 letters
   const avatarLabel = captain
     ? (captain.display_name ?? captain.email).slice(0, 1).toUpperCase()
     : team.name.slice(0, 2).toUpperCase();
@@ -49,6 +65,29 @@ export function TeamCard({ team, users }: { team: Team; users: User[] }) {
     if (!res.ok) {
       const b = await res.json().catch(() => ({}));
       setErr(b.error ?? "Failed");
+      return;
+    }
+    router.refresh();
+  }
+
+  async function uploadLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setErr(null);
+
+    const fd = new FormData();
+    fd.append("logo", file);
+
+    const res = await fetch(`/api/teams/${team.id}/logo`, {
+      method: "POST",
+      body: fd,
+    });
+    setUploading(false);
+
+    if (!res.ok) {
+      const b = await res.json().catch(() => ({}));
+      setErr(b.error ?? "Upload failed");
       return;
     }
     router.refresh();
@@ -72,18 +111,40 @@ export function TeamCard({ team, users }: { team: Team; users: User[] }) {
       <CardBody className="p-4 space-y-4">
         {/* Header — avatar + name + delete */}
         <div className="flex items-start gap-3">
-          {team.logo_url ? (
-            <img
-              src={team.logo_url}
-              alt=""
-              className="h-10 w-10 rounded-md object-cover border border-[var(--line-1)] shrink-0"
-            />
-          ) : (
-            <div className="h-10 w-10 rounded-md bg-[var(--bg-2)] border border-[var(--line-1)] grid place-items-center text-[13px] font-semibold text-[var(--fg-2)] shrink-0">
-              {avatarLabel}
+          <div
+            className="relative group cursor-pointer shrink-0"
+            onClick={() => fileInputRef.current?.click()}
+            title="Upload team logo"
+          >
+            {team.logo_url ? (
+              <img
+                src={team.logo_url}
+                alt=""
+                className="h-10 w-10 rounded-md object-cover border border-[var(--line-1)]"
+              />
+            ) : (
+              <div className="h-10 w-10 rounded-md bg-[var(--bg-2)] border border-[var(--line-1)] grid place-items-center text-[13px] font-semibold text-[var(--fg-2)]">
+                {avatarLabel}
+              </div>
+            )}
+
+            <div className="absolute inset-0 bg-black/60 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              {uploading ? (
+                <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+              ) : (
+                <ImagePlus size={14} className="text-white" />
+              )}
             </div>
-          )}
-          <div className="flex-1 min-w-0">
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              ref={fileInputRef}
+              onChange={uploadLogo}
+              className="hidden"
+            />
+          </div>
+
+          <div className="flex-1 min-w-0 pt-0.5">
             <div className="text-[14px] font-medium text-[var(--fg-1)] truncate">
               {team.name}
             </div>
@@ -91,24 +152,25 @@ export function TeamCard({ team, users }: { team: Team; users: User[] }) {
               {formatINR(team.initial_purse, { compact: true })} purse
             </div>
           </div>
+
           <button
             onClick={remove}
-            disabled={busy}
+            disabled={busy || uploading}
             title="Delete team"
-            className="h-7 w-7 grid place-items-center rounded-md text-[var(--fg-4)] hover:text-[var(--danger)] hover:bg-[var(--danger-bg)] transition-colors"
+            className="h-7 w-7 grid place-items-center rounded-md text-[var(--fg-4)] hover:text-[var(--danger)] hover:bg-[var(--danger-bg)] transition-colors disabled:opacity-50"
           >
             <Trash2 size={13} strokeWidth={1.75} />
           </button>
         </div>
 
-        {/* Captain */}
+        {/* Captain Login */}
         <div className="space-y-1.5">
           <label className="block text-[10px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
-            Captain
+            Captain Login
           </label>
           <select
             value={team.captain_user_id ?? ""}
-            disabled={busy}
+            disabled={busy || uploading}
             onChange={(e) => patch({ captain_user_id: e.target.value || null })}
             className="h-9 w-full rounded-md bg-[var(--bg-1)] border border-[var(--line-1)] px-2.5 text-[12px] text-[var(--fg-1)] focus:outline-none focus:border-[var(--accent-line)]"
           >
@@ -126,8 +188,28 @@ export function TeamCard({ team, users }: { team: Team; users: User[] }) {
           )}
         </div>
 
-        {/* Team name */}
+        {/* Playing Captain (Player) */}
         <div className="space-y-1.5">
+          <label className="block text-[10px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
+            Playing Captain (Optional)
+          </label>
+          <select
+            value={team.captain_player_id ?? ""}
+            disabled={busy || uploading}
+            onChange={(e) => patch({ captain_player_id: e.target.value || null })}
+            className="h-9 w-full rounded-md bg-[var(--bg-1)] border border-[var(--line-1)] px-2.5 text-[12px] text-[var(--fg-1)] focus:outline-none focus:border-[var(--accent-line)]"
+          >
+            <option value="">— none —</option>
+            {players.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({p.grade})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Team name */}
+        <div className="space-y-1.5 border-t border-[var(--line-1)] pt-3 mt-1">
           <label className="block text-[10px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
             Team name
           </label>
@@ -137,11 +219,12 @@ export function TeamCard({ team, users }: { team: Team; users: User[] }) {
               onChange={(e) => setName(e.target.value)}
               maxLength={40}
               className="h-9 text-[12px]"
+              disabled={busy || uploading}
             />
             <Button
               size="sm"
               variant={nameChanged ? "primary" : "ghost"}
-              disabled={busy || !nameChanged || name.trim().length < 2}
+              disabled={busy || uploading || !nameChanged || name.trim().length < 2}
               onClick={() => patch({ name: name.trim() })}
               className="px-2.5 shrink-0"
               title="Save name"

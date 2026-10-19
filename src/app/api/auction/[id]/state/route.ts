@@ -31,20 +31,45 @@ export async function GET(
   }
 
   // --- Current player on the block ---
-  const { data: current } = await admin
+  const { data: rawCurrent } = await admin
     .from("auction_players")
     .select(
       `
       id, status, round, sold_price, sold_to_team_id,
       player:players (
         id, player_code, name, grade, image_url,
-        achievements, participation_history, playing_centre, played_mira_bhayandar
+        achievements, participation_history, playing_centre, played_mira_bhayandar,
+        playing_hand
       )
     `
     )
     .eq("auction_id", id)
     .eq("status", "CURRENT")
     .maybeSingle();
+
+  // Normalize the player object (Supabase returns joins as arrays sometimes)
+  const currentPlayer = rawCurrent?.player
+    ? (Array.isArray(rawCurrent.player) ? rawCurrent.player[0] : rawCurrent.player)
+    : null;
+
+  // --- Check if the current player is a Captain ---
+  let captainTeam: { id: string; name: string } | null = null;
+  if (currentPlayer?.id) {
+    const { data: team } = await admin
+      .from("teams")
+      .select("id, name")
+      .eq("auction_id", id)
+      .eq("captain_player_id", currentPlayer.id)
+      .maybeSingle();
+    captainTeam = team ?? null;
+  }
+
+  // Build the clean `current` object for the frontend
+  const current = rawCurrent ? {
+    ...rawCurrent,
+    player: currentPlayer,
+    captainTeam,
+  } : null;
 
   // --- Highest non-undone bid for that player ---
   let highestBid: {
@@ -54,11 +79,11 @@ export async function GET(
     created_at: string;
   } | null = null;
 
-  if (current) {
+  if (rawCurrent) {
     const { data: bids } = await admin
       .from("bids")
       .select("id, amount, team_id, created_at")
-      .eq("auction_player_id", current.id)
+      .eq("auction_player_id", rawCurrent.id)
       .eq("is_undone", false)
       .order("amount", { ascending: false })
       .order("created_at", { ascending: true })
