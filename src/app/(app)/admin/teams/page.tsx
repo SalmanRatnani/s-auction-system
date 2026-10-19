@@ -66,15 +66,16 @@ async function Inner() {
           `status.eq.IN_POOL,id.in.(${assignedCaptainIds.join(",")})`
         )
       : playersQuery.eq("status", "IN_POOL");
-  // Temporary QA players appear only in a rehearsal; real event dropdowns
-  // exclude QA records even when they were reserved during a prior test.
-  const { data: allPlayers } = await playersQuery;
+  // Allow real players to be reserved while the auction is still in DRAFT,
+  // even before the controller switches from DRY_RUN to LIVE. Reserving a
+  // captain does NOT start a real auction. QA options stay rehearsal-only.
+  const { data: allPlayers, error: playersError } = await playersQuery;
   const players = (allPlayers ?? []).filter((player) =>
     assignedCaptainIds.includes(player.id) ||
-    (auction.mode === "DRY_RUN"
-      ? player.player_code.startsWith("QA-20261019-")
-      : !player.player_code.startsWith("QA-"))
+    !player.player_code.startsWith("QA-") ||
+    auction.mode === "DRY_RUN"
   );
+  const availableRealPlayers = players.filter((p) => !p.player_code.startsWith("QA-")).length;
 
   return (
     <div className="space-y-6 max-w-6xl animate-fade-up">
@@ -103,6 +104,17 @@ async function Inner() {
       {teamsError && (
         <div role="alert" className="rounded-lg border border-[var(--danger-line)] bg-[var(--danger-bg)] p-4 text-[13px] text-[var(--danger)]">
           Could not load teams: {teamsError.message}. No teams have been deleted.
+        </div>
+      )}
+      {playersError && (
+        <div role="alert" className="rounded-lg border border-[var(--danger-line)] bg-[var(--danger-bg)] p-4 text-[13px] text-[var(--danger)]">
+          Could not load playing captains: {playersError.message}
+        </div>
+      )}
+      {auction.mode === "DRY_RUN" && availableRealPlayers > 0 && (
+        <div role="note" className="rounded-lg border border-[var(--warning-line)] bg-[var(--warning-bg)] p-4 text-[13px] text-[var(--warning)]">
+          Approved real players are available to assign as playing captains. This auction is still in DRY_RUN.
+          Switch it to LIVE from Auction Control before starting a real auction. DRY_RUN cannot start with real playing captains.
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

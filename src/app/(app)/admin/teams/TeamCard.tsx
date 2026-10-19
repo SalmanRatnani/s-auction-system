@@ -54,6 +54,8 @@ export function TeamCard({
   const captain = users.find((u) => u.id === team.captain_user_id);
   const nameChanged = name.trim() !== team.name;
   const captainOptions = players.filter((p) => !takenPlayerIds.includes(p.id));
+  const firstCaptainGrade = players.find((p) => p.id === team.captain_player_id)?.grade;
+  const secondCaptainGrade = players.find((p) => p.id === team.co_captain_player_id)?.grade;
 
   const avatarLabel = captain
     ? (captain.display_name ?? captain.email).slice(0, 1).toUpperCase()
@@ -195,6 +197,9 @@ export function TeamCard({
               {captain.email}
             </p>
           )}
+          <p className="text-[10px] text-[var(--fg-4)]">
+            Login accounts only. Registered players are selected under Playing Captain below.
+          </p>
         </div>
 
         {/* Second captain login — shares the same purse and roster */}
@@ -226,16 +231,16 @@ export function TeamCard({
             className="h-9 w-full rounded-md bg-[var(--bg-1)] border border-[var(--line-1)] px-2.5 text-[12px] text-[var(--fg-1)] focus:outline-none focus:border-[var(--accent-line)]"
           >
             <option value="">— none —</option>
-            {captainOptions.filter((p) => p.id !== team.co_captain_player_id).map((p) => (
+            {captainOptions.filter((p) => p.id !== team.co_captain_player_id && p.grade !== secondCaptainGrade).map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} ({p.grade})
               </option>
             ))}
           </select>
           <p className="text-[10px] text-[var(--fg-4)]">
-            Optional — leave empty if neither captain plays. If selected, this
-            registered player is reserved until after Round 2, then assigned at
-            the category average (or base price when no one sold).
+            This registered player is reserved now and automatically allotted
+            when their category finishes, at the category average (or base price
+            if no ordinary player sells).
           </p>
         </div>
 
@@ -251,11 +256,11 @@ export function TeamCard({
             className="h-9 w-full rounded-md bg-[var(--bg-1)] border border-[var(--line-1)] px-2.5 text-[12px] text-[var(--fg-1)] focus:outline-none focus:border-[var(--accent-line)]"
           >
             <option value="">— none —</option>
-            {captainOptions.filter((p) => p.id !== team.captain_player_id).map((p) => (
+            {captainOptions.filter((p) => p.id !== team.captain_player_id && p.grade !== firstCaptainGrade).map((p) => (
               <option key={p.id} value={p.id}>{p.name} ({p.grade})</option>
             ))}
           </select>
-          <p className="text-[10px] text-[var(--fg-4)]">A second registered player reserved for final allotment. Both playing captains share the team's roster and purse.</p>
+          <p className="text-[10px] text-[var(--fg-4)]">A second registered player, from a different category, automatically allotted at that category's end. Both captains share the same purse and roster.</p>
         </div>
 
         {/* Team name */}
