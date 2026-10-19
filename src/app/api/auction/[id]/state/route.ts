@@ -175,6 +175,24 @@ export async function GET(
     (gradesByTeam[r.team_id] ??= []).push(p.grade);
   });
 
+  // Playing captains reserve their grades even before final allotment.
+  const captainIds = [...new Set(teamsRaw.flatMap((t) =>
+    [t.captain_player_id, t.co_captain_player_id].filter((v): v is string => !!v)
+  ))];
+  const { data: reservedPlayers, error: reservedError } = captainIds.length
+    ? await admin.from("players").select("id, grade").in("id", captainIds)
+    : { data: [] as { id: string; grade: string | null }[], error: null };
+  if (reservedError) return NextResponse.json({ error: reservedError.message }, { status: 500 });
+  const reservedGradeByPlayer = new Map((reservedPlayers ?? []).map((p) => [p.id, p.grade]));
+  const reservedGradesByTeam: Record<string, string[]> = {};
+  teamsRaw.forEach((t) => {
+    reservedGradesByTeam[t.id] = [...new Set(
+      [t.captain_player_id, t.co_captain_player_id]
+        .map((id) => id ? reservedGradeByPlayer.get(id) : null)
+        .filter((grade): grade is string => !!grade)
+    )];
+  });
+
   // --- Most recent sale (drives the SOLD celebration on every screen) ---
   const { data: lastTp } = await admin
     .from("team_players")
@@ -240,6 +258,8 @@ export async function GET(
       spent: isAuthed ? purse?.spent ?? 0 : 0,
       squad_count: purse?.squad_count ?? 0,
       won_grades: gradesByTeam[t.id] ?? [],
+      reserved_grades: reservedGradesByTeam[t.id] ?? [],
+      reserved_slots: [t.captain_player_id, t.co_captain_player_id].filter(Boolean).length,
     };
   });
 

@@ -62,12 +62,13 @@ const increment = current?.player?.grade
   const nextBid = currentBid === 0 ? basePrice : currentBid + increment;
   const purseAfter = myTeam ? myTeam.remaining_purse - nextBid : 0;
   const purseOk = myTeam && purseAfter >= 0;
-  const squadOk = myTeam ? myTeam.squad_count < maxSquad : false;
+  const squadOk = myTeam ? myTeam.squad_count + (myTeam.reserved_slots ?? 0) < maxSquad : false;
 
   // NEW: one player per category per team
   const currentGrade = current?.player?.grade ?? null;
+  const reservedCategory = !!(myTeam && currentGrade && myTeam.reserved_grades?.includes(currentGrade));
   const alreadyOwnsCategory =
-    !!(myTeam && currentGrade && myTeam.won_grades?.includes(currentGrade));
+    !!(myTeam && currentGrade && (myTeam.won_grades?.includes(currentGrade) || reservedCategory));
 
   // A playing captain is assigned by the auctioneer, never bid on.
   const captainTeam = current?.captainTeam ?? null;
@@ -172,10 +173,10 @@ const increment = current?.player?.grade
           {alreadyOwnsCategory && !isCaptain && myTeam && currentGrade && (
             <div className="rounded-lg border border-[var(--warning-line)] bg-[var(--warning-bg)] p-4 animate-scale-in">
               <div className="text-[13px] text-[var(--warning)] font-medium">
-                You already own a {currentGrade} player
+                {reservedCategory ? `Your playing captain reserves the ${currentGrade} category` : `You already own a ${currentGrade} player`}
               </div>
               <p className="text-[12px] text-[var(--warning)] opacity-75 mt-1">
-                Each team can only own one player per category. You cannot
+                Playing captains count toward the one-player-per-category rule. You cannot
                 bid on this player.
               </p>
             </div>

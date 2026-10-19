@@ -63,6 +63,9 @@ export type AuctionStateResponse = {
     squad_count: number;
     /** Categories (grades) this team already owns a player from. */
     won_grades: string[];
+    /** Categories reserved for both playing captains, even before final allotment. */
+    reserved_grades: string[];
+    reserved_slots: number;
   }>;
 };
 
