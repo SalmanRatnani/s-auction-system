@@ -163,7 +163,7 @@ export async function GET(
   // Powers the "one player per category per team" rule in the bid UI.
   const { data: rosters } = await admin
     .from("team_players")
-    .select(`team_id, player:players (grade)`)
+    .select(`team_id, player_id, player:players (grade)`)
     .eq("auction_id", id);
 
   const gradesByTeam: Record<string, string[]> = {};
@@ -174,6 +174,8 @@ export async function GET(
     if (!p?.grade) return;
     (gradesByTeam[r.team_id] ??= []).push(p.grade);
   });
+
+  const allottedPlayerIds = new Set((rosters ?? []).map((row) => row.player_id));
 
   // Playing captains reserve their grades even before final allotment.
   const captainIds = [...new Set(teamsRaw.flatMap((t) =>
@@ -188,7 +190,7 @@ export async function GET(
   teamsRaw.forEach((t) => {
     reservedGradesByTeam[t.id] = [...new Set(
       [t.captain_player_id, t.co_captain_player_id]
-        .map((id) => id ? reservedGradeByPlayer.get(id) : null)
+        .map((id) => id && !allottedPlayerIds.has(id) ? reservedGradeByPlayer.get(id) : null)
         .filter((grade): grade is string => !!grade)
     )];
   });
@@ -259,7 +261,7 @@ export async function GET(
       squad_count: purse?.squad_count ?? 0,
       won_grades: gradesByTeam[t.id] ?? [],
       reserved_grades: reservedGradesByTeam[t.id] ?? [],
-      reserved_slots: [t.captain_player_id, t.co_captain_player_id].filter(Boolean).length,
+      reserved_slots: [t.captain_player_id, t.co_captain_player_id].filter((playerId) => playerId && !allottedPlayerIds.has(playerId)).length,
     };
   });
 
