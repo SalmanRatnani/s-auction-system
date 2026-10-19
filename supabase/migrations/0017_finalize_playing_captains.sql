@@ -4,6 +4,8 @@
 
 alter table public.auctions
   add column if not exists captains_finalized_at timestamptz;
+alter table public.auctions
+  add column if not exists round_two_started_at timestamptz;
 
 -- Stronger reservation rule: one grade per team, even across both playing captains.
 create or replace function public.check_playing_captain_slots()
@@ -45,17 +47,21 @@ end $$;
 
 -- Round 2 uses the SAME registered players but new auction_player rows.
 -- Round 1 bids/history remain attached to the previous round.
+-- Two simultaneous draws cannot put separate players on the block.
+-- This index will reject the migration if inconsistent CURRENT rows exist.
+create unique index if not exists auction_players_one_current_per_auction
+  on public.auction_players(auction_id) where status='CURRENT';
+
 create or replace function public.start_round_two(p_auction_id uuid)
 returns jsonb language plpgsql security definer set search_path=public as $$
-declare v_role text; v_status text; v_count int;
+declare v_role text; v_status text; v_count int; v_round_two_started_at timestamptz;
 begin
   select role into v_role from public.users where id=auth.uid();
   if v_role <> 'MAIN_CONTROLLER' then raise exception 'Only controller can start Round 2'; end if;
-  select status into v_status from public.auctions where id=p_auction_id for update;
-  if v_status <> 'LIVE' then raise exception 'Auction must be LIVE'; end if;
-  if exists(select 1 from public.audit_log
-    where entity_type='auction' and entity_id=p_auction_id and action='ROUND2_STARTED')
-    then raise exception 'Round 2 has already started'; end if;
+  select status,round_two_started_at into v_status,v_round_two_started_at
+    from public.auctions where id=p_auction_id for update;
+  if v_status is distinct from 'LIVE' then raise exception 'Auction must be LIVE'; end if;
+  if v_round_two_started_at is not null then raise exception 'Round 2 has already started'; end if;
   if exists(select 1 from public.auction_players
     where auction_id=p_auction_id and status in ('PENDING','CURRENT'))
     then raise exception 'Complete all Round 1 draws before beginning Round 2'; end if;
@@ -68,6 +74,7 @@ begin
   update public.players p set status='IN_POOL'
     where exists(select 1 from public.auction_players ap where ap.auction_id=p_auction_id
     and ap.round=1 and ap.status='UNSOLD' and ap.player_id=p.id);
+  update public.auctions set round_two_started_at=now() where id=p_auction_id;
   insert into public.audit_log(actor_user_id,action,entity_type,entity_id,payload)
     values(auth.uid(),'ROUND2_STARTED','auction',p_auction_id,jsonb_build_object('requeued',v_count));
   return jsonb_build_object('requeued',v_count);
@@ -79,7 +86,7 @@ create or replace function public.finalize_playing_captains(
   p_auction_id uuid, p_default_base_prices jsonb
 ) returns jsonb language plpgsql security definer set search_path=public as $$
 declare
-  v_role text; v_status text; v_config jsonb; v_finalized timestamptz;
+  v_role text; v_status text; v_config jsonb; v_finalized timestamptz; v_round_two_started_at timestamptz;
   v_grade text; v_price bigint; v_average numeric; v_fallback bigint;
   v_remaining bigint; v_squad int; v_max_squad int; v_count int:=0;
   v_reserved record; v_result jsonb:='[]'::jsonb;
@@ -87,11 +94,14 @@ declare
 begin
   select role into v_role from public.users where id=auth.uid();
   if v_role <> 'MAIN_CONTROLLER' then raise exception 'Only controller can finalize playing captains'; end if;
-  select status,config,captains_finalized_at into v_status,v_config,v_finalized
+  select status,config,captains_finalized_at,round_two_started_at into v_status,v_config,v_finalized,v_round_two_started_at
     from public.auctions where id=p_auction_id for update;
   if not found then raise exception 'Auction not found'; end if;
-  if v_status <> 'LIVE' then raise exception 'Auction must be LIVE'; end if;
+  if v_status is distinct from 'LIVE' then raise exception 'Auction must be LIVE'; end if;
   if v_finalized is not null then raise exception 'Playing captains already finalized'; end if;
+  if not exists(select 1 from public.auction_players where auction_id=p_auction_id and round=1) then
+    raise exception 'Cannot finalize before Round 1 has started';
+  end if;
 
   if exists(select 1 from public.auction_players
       where auction_id=p_auction_id and status in ('PENDING','CURRENT')) then
@@ -99,8 +109,7 @@ begin
   end if;
   if exists(select 1 from public.auction_players
       where auction_id=p_auction_id and round=1 and status='UNSOLD')
-    and not exists(select 1 from public.audit_log
-      where entity_type='auction' and entity_id=p_auction_id and action='ROUND2_STARTED') then
+    and v_round_two_started_at is null then
     raise exception 'Round 1 has unsold players. Complete Round 2 before final allotment';
   end if;
 
