@@ -60,8 +60,14 @@ const increment = current?.player?.grade
   const isMyLead = highestBid && myTeam && highestBid.team_id === myTeam.id;
 
   const nextBid = currentBid === 0 ? basePrice : currentBid + increment;
-  const purseAfter = myTeam ? myTeam.remaining_purse - nextBid : 0;
-  const purseOk = myTeam && purseAfter >= 0;
+  // The initial purse still shows its full balance, but captain base-price
+  // reserves are unavailable for ordinary auction bids.
+  const protectedCaptainReserve = myTeam
+    ? (myTeam.reserved_grades ?? []).reduce((sum, grade) => sum + getBasePrice(auction?.config, grade), 0)
+    : 0;
+  const availableToBid = Math.max(0, (myTeam?.remaining_purse ?? 0) - protectedCaptainReserve);
+  const purseAfter = availableToBid - nextBid;
+  const purseOk = !!myTeam && purseAfter >= 0;
   const squadOk = myTeam ? myTeam.squad_count + (myTeam.reserved_slots ?? 0) < maxSquad : false;
 
   // NEW: one player per category per team
@@ -124,7 +130,7 @@ const increment = current?.player?.grade
               <AnimatedAmount value={myTeam.remaining_purse} />
             </div>
             <div className="text-[11px] text-[var(--fg-4)] tnum">
-              {myTeam.squad_count}/{maxSquad} players
+              {myTeam.squad_count}/{maxSquad} players · Available to bid: {formatINR(availableToBid, { compact: true })}
             </div>
           </div>
         )}
@@ -245,7 +251,7 @@ const increment = current?.player?.grade
 
           {!purseOk && myTeam && (
             <p className="text-[12px] text-[var(--danger)]">
-              Insufficient purse for the next minimum bid.
+              Insufficient bidding purse after protecting {formatINR(protectedCaptainReserve, { compact: true })} for playing captains.
             </p>
           )}
           {!squadOk && myTeam && (
