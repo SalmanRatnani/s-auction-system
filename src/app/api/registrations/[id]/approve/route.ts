@@ -1,92 +1,37 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { CATEGORY_ORDER, type Category } from "@/constants/categories";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-
-  // Auth check via user client (RLS-aware)
-  const userClient = await createClient();
-  const {
-    data: { user },
-  } = await userClient.auth.getUser();
+  const client = await createClient();
+  const { data: { user } } = await client.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: profile } = await userClient
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  const { data: profile } = await client
+    .from("users").select("role").eq("id", user.id).single();
   if (profile?.role !== "MAIN_CONTROLLER") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { grade } = (await request.json().catch(() => ({}))) as { grade?: string };
-  if (!grade) {
-    return NextResponse.json({ error: "Grade is required" }, { status: 400 });
+  if (!grade || !CATEGORY_ORDER.includes(grade as Category)) {
+    return NextResponse.json({ error: "Invalid grade" }, { status: 400 });
   }
 
-  const admin = createAdminClient();
-
-  const { data: reg, error: rerr } = await admin
-    .from("registrations")
-    .select("*")
-    .eq("id", id)
-    .single();
-  if (rerr || !reg) {
-    return NextResponse.json({ error: "Registration not found" }, { status: 404 });
-  }
-
-  if (reg.status === "APPROVED") {
-    return NextResponse.json({ error: "Already approved" }, { status: 409 });
-  }
-
-  // Player code: SAS-<year>-<4-digit sequence>
-  const { count } = await admin
-    .from("players")
-    .select("id", { count: "exact", head: true });
-  const seq = String((count ?? 0) + 1).padStart(4, "0");
-  const playerCode = `SAS-${new Date().getFullYear()}-${seq}`;
-
-  const { data: player, error: perr } = await admin
-    .from("players")
-    .insert({
-      player_code: playerCode,
-      registration_id: reg.id,
-      name: reg.name,
-      playing_hand: reg.playing_hand,
-      playing_centre: reg.playing_centre,
-      achievements: reg.achievements,
-      image_url: reg.image_url,
-      grade,
-      status: "IN_POOL",
-    })
-    .select("id")
-    .single();
-
-  if (perr) {
-    return NextResponse.json({ error: perr.message }, { status: 500 });
-  }
-
-  await admin
-    .from("registrations")
-    .update({
-      status: "APPROVED",
-      reviewed_by: user.id,
-      reviewed_at: new Date().toISOString(),
-    })
-    .eq("id", id);
-
-  await admin.from("audit_log").insert({
-    actor_user_id: user.id,
-    action: "REGISTRATION_APPROVED",
-    entity_type: "registration",
-    entity_id: id,
-    payload: { grade, player_id: player.id },
+  // This RPC atomically allocates a globally unique player code, creates the
+  // player, approves the registration, and writes the audit record.
+  // Repeated requests return the existing approved player instead of
+  // inserting a duplicate. Deleting QA records no longer resets code numbers.
+  const { data: playerId, error } = await client.rpc("approve_registration_player", {
+    p_registration_id: id,
+    p_grade: grade,
   });
-
-  return NextResponse.json({ ok: true, playerId: player.id });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 409 });
+  }
+  return NextResponse.json({ ok: true, playerId });
 }
