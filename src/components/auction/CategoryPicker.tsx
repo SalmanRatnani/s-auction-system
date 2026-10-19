@@ -8,8 +8,7 @@ import {
   PLAYERS_PER_CATEGORY,
   type Category,
 } from "@/constants/categories";
-import { formatINR } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { formatINR, cn } from "@/lib/utils";
 
 export function CategoryPicker({
   counts,
@@ -20,13 +19,20 @@ export function CategoryPicker({
   disabled: boolean;
   onDraw: (category: string) => Promise<void>;
 }) {
-  const [busy, setBusy] = useState<string | null>(null);
-  const total = Object.values(counts).reduce((s, n) => s + n, 0);
+  const [busy, setBusy] = useState(false);
+  const total = CATEGORY_ORDER.reduce((sum, cat) => sum + (counts[cat] ?? 0), 0);
+  // Shared with the API: always finish the first nonempty grade before
+  // moving ahead. When Round 2 starts, this automatically returns to A+.
+  const activeGrade = CATEGORY_ORDER.find((cat) => (counts[cat] ?? 0) > 0) ?? null;
 
-  async function draw(cat: string) {
-    setBusy(cat);
-    await onDraw(cat);
-    setBusy(null);
+  async function draw() {
+    if (!activeGrade || disabled || busy) return;
+    setBusy(true);
+    try {
+      await onDraw(activeGrade);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -34,50 +40,46 @@ export function CategoryPicker({
       <div className="flex items-start justify-between flex-wrap gap-3 mb-5">
         <div>
           <h3 className="text-[15px] font-medium text-[var(--fg-1)]">
-            Draw next player
+            Sequential category draw
           </h3>
           <p className="text-[12px] text-[var(--fg-3)] mt-1">
-            Pick a category. System draws a random unsold player.
+            A+ → A1 → A2 → A3 → B1 → … → G1. Every eligible player
+            in the current category must be sold or marked unsold before advancing.
           </p>
+          {activeGrade && (
+            <p className="mt-2 text-[12px] font-semibold text-[var(--accent)]" aria-live="polite">
+              Current category: {activeGrade} · {counts[activeGrade]} remaining
+            </p>
+          )}
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => draw("ANY")}
-          loading={busy === "ANY"}
-          disabled={disabled || total === 0 || busy !== null}
-        >
-          Draw any ({total})
+        <Button variant="primary" size="sm" onClick={draw}
+          loading={busy} disabled={disabled || activeGrade === null || busy}>
+          {activeGrade ? `Draw next ${activeGrade}` : "Round complete"}
+          {total > 0 && <span className="opacity-65">({total} total)</span>}
         </Button>
       </div>
 
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
         {CATEGORY_ORDER.map((cat, i) => {
           const remaining = counts[cat] ?? 0;
-          const empty = remaining === 0;
-          const isBusy = busy === cat;
+          const isActive = cat === activeGrade;
           return (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => draw(cat)}
-              disabled={disabled || empty || busy !== null}
+            <div key={cat}
+              aria-current={isActive ? "step" : undefined}
               style={{ animationDelay: `${i * 22}ms` }}
               className={cn(
-                "group rounded-lg border border-[var(--line-1)] bg-[var(--bg-0)] p-3 text-left animate-fade-up",
-                "transition-[border-color,background-color,transform] duration-150",
-                "hover:-translate-y-0.5 active:scale-[0.97]",
-                "hover:border-[var(--accent-line)] hover:bg-[var(--bg-2)]",
-                "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[var(--line-1)] disabled:hover:bg-[var(--bg-0)]"
+                "rounded-lg border p-3 text-left animate-fade-up transition-[border-color,background-color] duration-150",
+                isActive
+                  ? "border-[var(--accent-line)] bg-[var(--accent-bg)]"
+                  : "border-[var(--line-1)] bg-[var(--bg-0)]",
+                remaining === 0 && "opacity-50"
               )}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-[13px] font-medium text-[var(--fg-1)]">
+              <div className="flex items-center justify-between gap-1">
+                <span className={cn("text-[13px] font-medium", isActive ? "text-[var(--accent)]" : "text-[var(--fg-1)]")}>
                   {cat}
                 </span>
-                {isBusy && (
-                  <span className="h-3 w-3 rounded-full border-[1.5px] border-[var(--accent)] border-t-transparent animate-spin-slow" />
-                )}
+                {isActive && <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" aria-label="Current category" />}
               </div>
               <div className="text-[11px] text-[var(--fg-4)] mt-1.5 tnum">
                 {remaining}/{PLAYERS_PER_CATEGORY}
@@ -85,10 +87,15 @@ export function CategoryPicker({
               <div className="text-[11px] text-[var(--fg-3)] mt-0.5 tnum">
                 {formatINR(DEFAULT_BASE_PRICES[cat as Category], { compact: true })}
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
+      {activeGrade === null && (
+        <p className="text-[12px] text-[var(--fg-3)] mt-4">
+          All regular players for this round have been processed. Start Round 2 for any unsold players, or proceed to final allotment after Round 2.
+        </p>
+      )}
     </div>
   );
 }

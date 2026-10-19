@@ -79,6 +79,7 @@ export async function PATCH(
     captain_user_id?: string | null;
     co_captain_user_id?: string | null;
     captain_player_id?: string | null;
+    co_captain_player_id?: string | null;
   };
 
   const update: Record<string, unknown> = {};
@@ -176,6 +177,23 @@ export async function PATCH(
     }
 
     update.captain_player_id = playerId;
+  }
+
+  if ("co_captain_player_id" in body) {
+    if (!isController) return NextResponse.json({ error: "Only the controller can assign playing captains" }, { status: 403 });
+    const playerId = body.co_captain_player_id ?? null;
+    if (playerId) {
+      const admin = createAdminClient();
+      const { data: player } = await admin.from("players").select("id, status").eq("id", playerId).maybeSingle();
+      if (!player) return NextResponse.json({ error: "Player not found" }, { status: 404 });
+      if (player.status === "SOLD" && playerId !== (team as { co_captain_player_id: string | null }).co_captain_player_id) {
+        return NextResponse.json({ error: "Already sold players cannot be newly reserved" }, { status: 409 });
+      }
+      if (playerId === (body.captain_player_id ?? (team as { captain_player_id: string | null }).captain_player_id)) {
+        return NextResponse.json({ error: "Choose two different playing captains" }, { status: 409 });
+      }
+    }
+    update.co_captain_player_id = playerId;
   }
 
   if (Object.keys(update).length === 0) {
