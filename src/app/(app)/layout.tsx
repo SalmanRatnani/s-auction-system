@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
+import { PageTransition } from "@/components/layout/PageTransition";
 import { AutoLogout } from "@/components/layout/AutoLogout";
 import type { Role } from "@/types/roles";
 
@@ -32,7 +33,7 @@ export default async function AppLayout({
       <Sidebar role={role} />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar role={role} displayName={displayName} email={email} />
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto">{children}</main>
+        <main className="flex-1 p-4 md:p-8 overflow-y-auto"><PageTransition>{children}</PageTransition></main>
       </div>
       <AutoLogout role={role} />
     </div>
