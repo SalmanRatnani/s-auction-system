@@ -7,6 +7,7 @@ import {
   type TeamDetailData,
 } from "@/components/auction/TeamDetail";
 import { DEFAULT_CONFIG } from "@/constants/auction-config";
+import { isMissingPartnerColumn } from "@/lib/teams-compat";
 
 export const dynamic = "force-dynamic";
 
@@ -35,13 +36,16 @@ async function Inner({ params }: { params: Promise<{ teamId: string }> }) {
   if (!auction) return <div className="text-[var(--danger)]">No auction.</div>;
 
   // Load team
-  const { data: teamRow } = await supabase
-    .from("teams")
+  const teamQuery = await supabase.from("teams")
     .select("id, name, logo_url, captain_user_id, co_captain_user_id, initial_purse")
-    .eq("id", teamId)
-    .eq("auction_id", auction.id)
-    .maybeSingle();
-
+    .eq("id", teamId).eq("auction_id", auction.id).maybeSingle();
+  const fallback = isMissingPartnerColumn(teamQuery.error)
+    ? await supabase.from("teams").select("id, name, logo_url, captain_user_id, initial_purse")
+        .eq("id", teamId).eq("auction_id", auction.id).maybeSingle()
+    : null;
+  const teamError = fallback?.error ?? (fallback ? null : teamQuery.error);
+  if (teamError) throw new Error(`Could not load team: ${teamError.message}`);
+  const teamRow = fallback ? (fallback.data ? { ...fallback.data, co_captain_user_id: null } : null) : teamQuery.data;
   if (!teamRow) notFound();
 
   // Captain display name

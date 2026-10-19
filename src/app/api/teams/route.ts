@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getOrCreateDraftAuction } from "@/lib/auction";
 import { PURSE_PAISE } from "@/constants/categories";
+import { isMissingPartnerColumn } from "@/lib/teams-compat";
 
 const MAX_TEAMS = 6;
 
@@ -11,14 +12,20 @@ export async function GET() {
   const auction = await getOrCreateDraftAuction();
   if (!auction) return NextResponse.json({ error: "No auction" }, { status: 500 });
 
-  const { data, error } = await supabase
-    .from("teams")
+  const full = await supabase.from("teams")
     .select("id, name, logo_url, captain_user_id, co_captain_user_id, initial_purse, created_at")
-    .eq("auction_id", auction.id)
-    .order("created_at", { ascending: true });
-
+    .eq("auction_id", auction.id).order("created_at", { ascending: true });
+  const fallback = isMissingPartnerColumn(full.error)
+    ? await supabase.from("teams")
+        .select("id, name, logo_url, captain_user_id, initial_purse, created_at")
+        .eq("auction_id", auction.id).order("created_at", { ascending: true })
+    : null;
+  const error = fallback?.error ?? (fallback ? null : full.error);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ auction, teams: data ?? [] });
+  const teams = fallback
+    ? (fallback.data ?? []).map((team) => ({ ...team, co_captain_user_id: null }))
+    : full.data ?? [];
+  return NextResponse.json({ auction, teams });
 }
 
 export async function POST(request: NextRequest) {

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { isMissingPartnerColumn } from "@/lib/teams-compat";
 
 export const runtime = "nodejs";
 
@@ -28,8 +29,13 @@ export async function POST(
     .from("users").select("role").eq("id", user.id).single();
 
   const admin = createAdminClient();
-  const { data: team } = await admin
-    .from("teams").select("captain_user_id, co_captain_user_id").eq("id", id).single();
+  const result = await admin.from("teams").select("captain_user_id, co_captain_user_id").eq("id", id).maybeSingle();
+  const fallback = isMissingPartnerColumn(result.error)
+    ? await admin.from("teams").select("captain_user_id").eq("id", id).maybeSingle()
+    : null;
+  const teamError = fallback?.error ?? (fallback ? null : result.error);
+  if (teamError) return NextResponse.json({ error: teamError.message }, { status: 500 });
+  const team = fallback ? (fallback.data ? { ...fallback.data, co_captain_user_id: null } : null) : result.data;
   if (!team) return NextResponse.json({ error: "Team not found" }, { status: 404 });
 
   const isController = profile?.role === "MAIN_CONTROLLER";

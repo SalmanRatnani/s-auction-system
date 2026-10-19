@@ -4,6 +4,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { getOrCreateDraftAuction } from "@/lib/auction";
 import { CreateTeamButton } from "./CreateTeamButton";
 import { TeamCard } from "./TeamCard";
+import { isMissingPartnerColumn } from "@/lib/teams-compat";
 
 export const dynamic = "force-dynamic";
 
@@ -24,11 +25,24 @@ async function Inner() {
     return <div className="text-[var(--danger)]">Failed to init auction.</div>;
   }
 
-  const { data: teams } = await supabase
+  // A newer app can deploy ahead of the optional co-captain migration.
+  // Fall back to the original schema rather than showing zero teams.
+  const fullQuery = await supabase
     .from("teams")
     .select("id, name, logo_url, captain_user_id, co_captain_user_id, captain_player_id, initial_purse, created_at")
     .eq("auction_id", auction.id)
     .order("created_at", { ascending: true });
+  const needsMigration = isMissingPartnerColumn(fullQuery.error);
+  const originalQuery = needsMigration
+    ? await supabase.from("teams")
+        .select("id, name, logo_url, captain_user_id, captain_player_id, initial_purse, created_at")
+        .eq("auction_id", auction.id)
+        .order("created_at", { ascending: true })
+    : null;
+  const teamsError = originalQuery?.error ?? (needsMigration ? null : fullQuery.error);
+  const teams = needsMigration
+    ? (originalQuery?.data ?? []).map((team) => ({ ...team, co_captain_user_id: null }))
+    : fullQuery.data ?? [];
 
   const { data: users } = await supabase
     .from("users")
@@ -69,11 +83,22 @@ async function Inner() {
             teams
           </p>
         </div>
-        <CreateTeamButton disabled={(teams?.length ?? 0) >= MAX_TEAMS} />
+        <CreateTeamButton disabled={!!teamsError || teams.length >= MAX_TEAMS} />
       </header>
 
+      {needsMigration && (
+        <div role="alert" className="rounded-lg border border-[var(--warning-line)] bg-[var(--warning-bg)] p-4 text-[13px] text-[var(--warning)]">
+          The optional partner-captain database migration has not been applied yet.
+          Existing teams are displayed, but adding a partner requires Supabase migration 0015.
+        </div>
+      )}
+      {teamsError && (
+        <div role="alert" className="rounded-lg border border-[var(--danger-line)] bg-[var(--danger-bg)] p-4 text-[13px] text-[var(--danger)]">
+          Could not load teams: {teamsError.message}. No teams have been deleted.
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {(teams ?? []).map((t) => (
+        {teams.map((t) => (
           <TeamCard
             key={t.id}
             team={t}
@@ -84,7 +109,7 @@ async function Inner() {
             )}
           />
         ))}
-        {(teams?.length ?? 0) === 0 && (
+        {!teamsError && teams.length === 0 && (
           <Card className="col-span-full">
             <CardBody className="text-[13px] text-[var(--fg-3)] py-8 text-center">
               No teams yet. Click &quot;Create team&quot; to start.
