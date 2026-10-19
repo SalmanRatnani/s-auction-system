@@ -108,33 +108,39 @@ export async function GET(
   // --- Pool counts by category ---
   const { data: pending } = await admin
     .from("auction_players")
-    .select("players!inner(grade)")
+    .select("player_id, players!inner(grade)")
     .eq("auction_id", id)
     .eq("status", "PENDING");
 
-  const counts: Record<string, number> = {};
-  CATEGORY_ORDER.forEach((c) => (counts[c] = 0));
-  (pending ?? []).forEach((row) => {
-    const p = one<{ grade: string }>(
-      row.players as { grade: string } | { grade: string }[] | null
-    );
-    if (p?.grade) counts[p.grade] = (counts[p.grade] ?? 0) + 1;
-  });
-
   // --- Teams ---
   const fullTeams = await admin.from("teams")
-    .select("id, name, logo_url, captain_user_id, co_captain_user_id, initial_purse")
+    .select("id, name, logo_url, captain_user_id, co_captain_user_id, captain_player_id, co_captain_player_id, initial_purse")
     .eq("auction_id", id).order("created_at", { ascending: true });
   const fallback = isMissingPartnerColumn(fullTeams.error)
     ? await admin.from("teams")
-        .select("id, name, logo_url, captain_user_id, initial_purse")
+        .select("id, name, logo_url, captain_user_id, captain_player_id, initial_purse")
         .eq("auction_id", id).order("created_at", { ascending: true })
     : null;
   const teamsError = fallback?.error ?? (fallback ? null : fullTeams.error);
   if (teamsError) return NextResponse.json({ error: teamsError.message }, { status: 500 });
   const teamsRaw = fallback
-    ? (fallback.data ?? []).map((team) => ({ ...team, co_captain_user_id: null }))
+    ? (fallback.data ?? []).map((team) => ({ ...team, co_captain_user_id: null, co_captain_player_id: null }))
     : fullTeams.data ?? [];
+
+  // Exclude both reserved playing-captain slots from round progression,
+  // including older queues where a captain had already been seeded.
+  const reservedPlayerIds = new Set(teamsRaw.flatMap((t) =>
+    [t.captain_player_id, t.co_captain_player_id].filter((v): v is string => !!v)
+  ));
+  const counts: Record<string, number> = {};
+  CATEGORY_ORDER.forEach((grade) => (counts[grade] = 0));
+  (pending ?? []).forEach((row) => {
+    if (reservedPlayerIds.has(row.player_id)) return;
+    const player = one<{ grade: string }>(
+      row.players as { grade: string } | { grade: string }[] | null
+    );
+    if (player?.grade) counts[player.grade] = (counts[player.grade] ?? 0) + 1;
+  });
 
   const { data: purses } = await admin
     .from("team_purses")
