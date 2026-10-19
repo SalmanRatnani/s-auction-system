@@ -27,43 +27,52 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  // Detect whether the caller is authenticated
+  // Start independent queries together: the previous waterfall delayed every
+  // spectator and captain even when Realtime delivered a bid immediately.
   const userClient = await createClient();
-  const {
-    data: { user },
-  } = await userClient.auth.getUser();
-  const isAuthed = !!user;
-
-  // Use admin client so public viewers (no session) can read.
-  // RLS is bypassed; we filter fields below instead.
   const admin = createAdminClient();
-
-  const { data: auction } = await admin
-    .from("auctions")
-    .select("*")
-    .eq("id", id)
-    .single();
+  const [
+    authResult, auctionResult, rawCurrentResult, pendingResult,
+    fullTeams, pursesResult, rostersResult, lastTpResult,
+  ] = await Promise.all([
+    userClient.auth.getUser(),
+    admin.from("auctions").select("*").eq("id", id).single(),
+    admin.from("auction_players").select(`
+      id, status, round, sold_price, sold_to_team_id,
+      player:players (
+        id, player_code, name, grade, image_url,
+        achievements, playing_centre, playing_hand
+      )
+    `).eq("auction_id", id).eq("status", "CURRENT").maybeSingle(),
+    admin.from("auction_players").select("player_id, players!inner(grade)")
+      .eq("auction_id", id).eq("status", "PENDING"),
+    admin.from("teams")
+      .select("id, name, logo_url, captain_user_id, co_captain_user_id, captain_player_id, co_captain_player_id, initial_purse")
+      .eq("auction_id", id).order("created_at", { ascending: true }),
+    admin.from("team_purses").select("team_id, remaining_purse, spent, squad_count")
+      .eq("auction_id", id),
+    admin.from("team_players").select(`team_id, player_id, player:players (grade)`)
+      .eq("auction_id", id),
+    admin.from("team_players").select(
+      `id, price, acquired_via, won_at,
+       player:players (name, grade, image_url),
+       team:teams (name)`
+    ).eq("auction_id", id).order("won_at", { ascending: false })
+      .limit(1).maybeSingle(),
+  ]);
+  const isAuthed = !!authResult.data.user;
+  const { data: auction } = auctionResult;
+  const { data: rawCurrent } = rawCurrentResult;
+  const { data: pending } = pendingResult;
+  const { data: purses } = pursesResult;
+  const { data: rosters } = rostersResult;
+  const { data: lastTp } = lastTpResult;
 
   if (!auction) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   // --- Current player on the block ---
-  const { data: rawCurrent } = await admin
-    .from("auction_players")
-    .select(
-      `
-      id, status, round, sold_price, sold_to_team_id,
-      player:players (
-        id, player_code, name, grade, image_url,
-        achievements, playing_centre, playing_hand
-      )
-    `
-    )
-    .eq("auction_id", id)
-    .eq("status", "CURRENT")
-    .maybeSingle();
-
   const currentPlayer = one<CurrentPlayer>(
     rawCurrent?.player as CurrentPlayer | CurrentPlayer[] | null | undefined
   );
@@ -106,16 +115,7 @@ export async function GET(
   }
 
   // --- Pool counts by category ---
-  const { data: pending } = await admin
-    .from("auction_players")
-    .select("player_id, players!inner(grade)")
-    .eq("auction_id", id)
-    .eq("status", "PENDING");
-
   // --- Teams ---
-  const fullTeams = await admin.from("teams")
-    .select("id, name, logo_url, captain_user_id, co_captain_user_id, captain_player_id, co_captain_player_id, initial_purse")
-    .eq("auction_id", id).order("created_at", { ascending: true });
   const fallback = isMissingPartnerColumn(fullTeams.error)
     ? await admin.from("teams")
         .select("id, name, logo_url, captain_user_id, captain_player_id, initial_purse")
@@ -142,11 +142,6 @@ export async function GET(
     if (player?.grade) counts[player.grade] = (counts[player.grade] ?? 0) + 1;
   });
 
-  const { data: purses } = await admin
-    .from("team_purses")
-    .select("team_id, remaining_purse, spent, squad_count")
-    .eq("auction_id", id);
-
   const purseByTeam: Record<
     string,
     { remaining_purse: number; spent: number; squad_count: number }
@@ -161,11 +156,6 @@ export async function GET(
 
   // --- Which categories each team has already won ---
   // Powers the "one player per category per team" rule in the bid UI.
-  const { data: rosters } = await admin
-    .from("team_players")
-    .select(`team_id, player_id, player:players (grade)`)
-    .eq("auction_id", id);
-
   const gradesByTeam: Record<string, string[]> = {};
   (rosters ?? []).forEach((r) => {
     const p = one<{ grade: string | null }>(
@@ -196,18 +186,6 @@ export async function GET(
   });
 
   // --- Most recent sale (drives the SOLD celebration on every screen) ---
-  const { data: lastTp } = await admin
-    .from("team_players")
-    .select(
-      `id, price, acquired_via, won_at,
-       player:players (name, grade, image_url),
-       team:teams (name)`
-    )
-    .eq("auction_id", id)
-    .order("won_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
   let lastSale: {
     id: string;
     price: number;

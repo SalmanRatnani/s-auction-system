@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export type LastSale = {
-  /** team_players row id — changes on every new sale / captain assignment */
   id: string;
   price: number;
   acquired_via: string;
@@ -39,7 +38,6 @@ export type AuctionStateResponse = {
       playing_centre: string | null;
       playing_hand: string | null;
     } | null;
-    /** Set when the player on the block is a team's playing captain. */
     captainTeam?: { id: string; name: string } | null;
   } | null;
   highestBid: {
@@ -49,7 +47,6 @@ export type AuctionStateResponse = {
     created_at: string;
   } | null;
   counts: Record<string, number>;
-  /** Most recent sale in this auction — drives the SOLD celebration. */
   lastSale: LastSale | null;
   teams: Array<{
     id: string;
@@ -61,131 +58,166 @@ export type AuctionStateResponse = {
     remaining_purse: number;
     spent: number;
     squad_count: number;
-    /** Categories (grades) this team already owns a player from. */
     won_grades: string[];
-    /** Categories reserved for both playing captains, even before final allotment. */
     reserved_grades: string[];
     reserved_slots: number;
   }>;
 };
 
+type BidUpdate = {
+  id: string;
+  auction_player_id: string;
+  team_id: string;
+  amount: number;
+  created_at: string;
+  is_undone?: boolean;
+};
+
+/**
+ * Bids use the Realtime payload directly; no HTTP round trip is needed to
+ * show a new leader. Full snapshots still reconcile sales, undo and purses.
+ */
 export function useAuctionState(auctionId: string, pollMs = 2500) {
   const [state, setState] = useState<AuctionStateResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [connected, setConnected] = useState(false);
   const inFlightRef = useRef(false);
+  const needsRefreshRef = useRef(false);
+  const requestSequenceRef = useRef(0);
+  const recentBidRef = useRef<BidUpdate | null>(null);
+
+  const applyBid = useCallback((bid: BidUpdate) => {
+    if (!bid?.id || !bid.auction_player_id || !bid.team_id ||
+        !Number.isSafeInteger(Number(bid.amount)) || bid.is_undone) return;
+
+    const normalized: BidUpdate = { ...bid, amount: Number(bid.amount) };
+    recentBidRef.current = normalized;
+    requestSequenceRef.current += 1;
+
+    setState((previous) => {
+      if (!previous || previous.current?.id !== normalized.auction_player_id) return previous;
+      const leader = previous.highestBid;
+      if (leader && leader.amount > normalized.amount) return previous;
+      if (leader && leader.amount === normalized.amount &&
+          new Date(leader.created_at).getTime() <= new Date(normalized.created_at).getTime()) return previous;
+      return {
+        ...previous,
+        highestBid: {
+          id: normalized.id,
+          team_id: normalized.team_id,
+          amount: normalized.amount,
+          created_at: normalized.created_at,
+        },
+      };
+    });
+  }, []);
 
   const refresh = useCallback(async () => {
-    if (inFlightRef.current) return;
+    if (inFlightRef.current) {
+      needsRefreshRef.current = true;
+      return;
+    }
     inFlightRef.current = true;
+    const requestSequence = requestSequenceRef.current;
     try {
-      const res = await fetch(`/api/auction/${auctionId}/state`, {
+      const response = await fetch(`/api/auction/${auctionId}/state`, {
         cache: "no-store",
       });
-      if (res.ok) {
-        setState((await res.json()) as AuctionStateResponse);
+      if (response.ok) {
+        const snapshot = await response.json() as AuctionStateResponse;
+        // A Realtime bid can arrive while an older snapshot is in flight.
+        // Never allow that outdated response to briefly replace the new leader.
+        const freshBid = recentBidRef.current;
+        if (requestSequenceRef.current !== requestSequence &&
+            freshBid && snapshot.current?.id === freshBid.auction_player_id &&
+            (!snapshot.highestBid || snapshot.highestBid.amount < freshBid.amount)) {
+          snapshot.highestBid = {
+            id: freshBid.id, team_id: freshBid.team_id,
+            amount: freshBid.amount, created_at: freshBid.created_at,
+          };
+          needsRefreshRef.current = true;
+        }
+        setState(snapshot);
       }
     } catch {
-      // network blip — next tick will retry
+      // Transient connection loss: next Realtime event or fallback poll retries.
     } finally {
       inFlightRef.current = false;
       setLoading(false);
+      if (needsRefreshRef.current) {
+        needsRefreshRef.current = false;
+        // A change during a request must never be discarded.
+        void refresh();
+      }
     }
   }, [auctionId]);
 
-  // Initial load + realtime subscription
   useEffect(() => {
-    refresh();
-
+    void refresh();
     const supabase = createClient();
     const channel = supabase
       .channel(`auction-${auctionId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "bids",
-          filter: `auction_id=eq.${auctionId}`,
-        },
-        () => refresh()
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "auction_players",
-          filter: `auction_id=eq.${auctionId}`,
-        },
-        () => refresh()
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "auctions",
-          filter: `id=eq.${auctionId}`,
-        },
-        () => refresh()
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "purse_ledger",
-          filter: `auction_id=eq.${auctionId}`,
-        },
-        () => refresh()
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "team_players",
-          filter: `auction_id=eq.${auctionId}`,
-        },
-        () => refresh()
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "teams",
-          filter: `auction_id=eq.${auctionId}`,
-        },
-        () => refresh()
-      )
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "bids",
+        filter: `auction_id=eq.${auctionId}`,
+      }, (event) => {
+        const bid = event.new as BidUpdate;
+        applyBid(bid);
+        // Direct payload is instant; a later full snapshot confirms totals.
+      })
+      .on("postgres_changes", {
+        event: "UPDATE", schema: "public", table: "bids",
+        filter: `auction_id=eq.${auctionId}`,
+      }, () => { recentBidRef.current = null; void refresh(); })
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "auction_players",
+        filter: `auction_id=eq.${auctionId}`,
+      }, () => { recentBidRef.current = null; void refresh(); })
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "auctions",
+        filter: `id=eq.${auctionId}`,
+      }, () => { void refresh(); })
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "purse_ledger",
+        filter: `auction_id=eq.${auctionId}`,
+      }, () => { void refresh(); })
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "team_players",
+        filter: `auction_id=eq.${auctionId}`,
+      }, () => { void refresh(); })
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "teams",
+        filter: `auction_id=eq.${auctionId}`,
+      }, () => { void refresh(); })
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
-          // Catch up immediately after the channel is live
-          refresh();
+          setConnected(true);
+          void refresh();
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          setConnected(false);
         }
       });
 
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
-  }, [auctionId, refresh]);
+  }, [auctionId, applyBid, refresh]);
 
-  // Polling fallback (default 2.5s) — belt and braces
+  // Realtime is the primary delivery path; poll slowly while connected,
+  // poll more frequently when a websocket is disconnected or blocked.
   useEffect(() => {
-    if (!pollMs) return;
-    const t = setInterval(refresh, pollMs);
-    return () => clearInterval(t);
-  }, [pollMs, refresh]);
+    const fallbackMs = connected ? Math.max(pollMs, 5000) : Math.min(pollMs, 1200);
+    const interval = setInterval(() => { void refresh(); }, fallbackMs);
+    return () => clearInterval(interval);
+  }, [pollMs, connected, refresh]);
 
-  // Refresh on tab focus — user switched back to the tab
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === "visible") refresh();
+      if (document.visibilityState === "visible") void refresh();
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [refresh]);
 
-  return { state, loading, refresh };
+  return { state, loading, refresh, applyBid, realtimeConnected: connected };
 }

@@ -17,7 +17,7 @@ export function LiveViewer({
   showPurse?: boolean;
   teamLinkBase?: string;
 }) {
-  const { state, loading } = useAuctionState(auctionId, 2500);
+  const { state, loading, realtimeConnected } = useAuctionState(auctionId, 2500);
 
   if (loading || !state) {
     return <div className="text-[13px] text-[var(--fg-3)]">Loading…</div>;
@@ -38,6 +38,9 @@ export function LiveViewer({
           <h1 className="text-[22px] font-semibold tracking-tight">
             Live Auction
           </h1>
+          <p className="text-[11px] text-[var(--fg-3)] mt-1" role="status">
+            {realtimeConnected ? "● Realtime connected" : "○ Reconnecting · automatic refresh active"}
+          </p>
           <p className="text-[13px] text-[var(--fg-3)] mt-1">
             {auction?.name} ·{" "}
             <span

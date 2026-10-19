@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 export function ConsoleClient({ auctionId }: { auctionId: string }) {
-  const { state, loading, refresh } = useAuctionState(auctionId, 1500);
+  const { state, loading, refresh, realtimeConnected } = useAuctionState(auctionId, 1500);
   const [busy, setBusy] = useState<
     null | "unsold" | "skip" | "sell" | "undo" | "pause" | "resume"
   >(null);
@@ -81,6 +81,9 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
           <h1 className="text-[22px] font-semibold tracking-tight">
             Auction Console
           </h1>
+          <p className="text-[11px] text-[var(--fg-3)] mt-1" role="status">
+            {realtimeConnected ? "● Realtime connected" : "○ Reconnecting · automatic refresh active"}
+          </p>
           <p className="text-[13px] text-[var(--fg-3)] mt-1">
             {auction?.name} ·{" "}
             <span

@@ -14,7 +14,7 @@ export function ProjectorView({
   auctionId: string;
   showPurse?: boolean;
 }) {
-  const { state, loading } = useAuctionState(auctionId, 2000);
+  const { state, loading, realtimeConnected } = useAuctionState(auctionId, 2000);
 
   if (loading || !state) {
     return (
@@ -44,6 +44,9 @@ export function ProjectorView({
           </div>
           <div className="text-[24px] font-semibold tracking-tight mt-1">
             {auction?.name}
+          </div>
+          <div className="text-[11px] text-[var(--fg-4)] mt-1" role="status">
+            {realtimeConnected ? "● Realtime connected" : "○ Reconnecting · automatic refresh active"}
           </div>
         </div>
         <div

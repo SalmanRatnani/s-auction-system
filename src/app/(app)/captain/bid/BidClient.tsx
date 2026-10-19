@@ -23,7 +23,7 @@ export function BidClient({
   auctionId: string;
   userId: string;
 }) {
-  const { state, loading, refresh } = useAuctionState(auctionId, 1500);
+  const { state, loading, refresh, applyBid, realtimeConnected } = useAuctionState(auctionId, 1500);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(
     null
@@ -96,8 +96,19 @@ const increment = current?.player?.grade
       setMsg({ kind: "err", text: body.error ?? "Bid failed" });
       return;
     }
+    // The RPC has committed, so render the confirmed leader instantly.
+    // Realtime then delivers it to auctioneer, captains and spectators.
+    if (body.bid?.bid_id && body.bid?.team_id) {
+      applyBid({
+        id: body.bid.bid_id,
+        auction_player_id: current.id,
+        team_id: body.bid.team_id,
+        amount: body.bid.amount,
+        created_at: new Date().toISOString(),
+      });
+    }
     setMsg({ kind: "ok", text: `Bid placed: ${formatINR(amount, { compact: true })}` });
-    refresh();
+    void refresh();
   }
 
     const cannotBid =
@@ -117,6 +128,9 @@ const increment = current?.player?.grade
       <header className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-[22px] font-semibold tracking-tight">Bid</h1>
+          <p className="text-[11px] mt-1 text-[var(--fg-3)]" role="status">
+            {realtimeConnected ? "● Live updates connected" : "○ Reconnecting · automatic refresh active"}
+          </p>
           <p className="text-[13px] text-[var(--fg-3)] mt-1">
             {myTeam ? myTeam.name : "No team assigned"}
           </p>
