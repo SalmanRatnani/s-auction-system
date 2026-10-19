@@ -117,6 +117,69 @@ h1, h2, h3, h4, h5 {
 .delay-300 { animation-delay: 300ms; }
 
 /* ============================================================
+   MOTION — auction moments
+   ============================================================ */
+
+@keyframes slide-up      { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes player-reveal {
+  0%   { opacity: 0; transform: translateY(16px) scale(0.985); filter: blur(6px); }
+  60%  { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+@keyframes bid-pop {
+  0%   { transform: scale(1);    color: var(--fg-1); }
+  35%  { transform: scale(1.09); color: var(--accent-hover); text-shadow: 0 0 24px var(--accent-line); }
+  100% { transform: scale(1);    color: var(--accent); }
+}
+@keyframes row-flash {
+  0%   { background-color: var(--accent-line); }
+  100% { background-color: var(--accent-bg); }
+}
+@keyframes ping-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55); }
+  100% { box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); }
+}
+@keyframes sold-in {
+  0%   { opacity: 0; transform: scale(0.88) translateY(12px); }
+  70%  { opacity: 1; transform: scale(1.02) translateY(0); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes confetti-fall {
+  0%   { transform: translate3d(0, -12vh, 0) rotate(0deg);   opacity: 1; }
+  100% { transform: translate3d(var(--drift, 0px), 112vh, 0) rotate(720deg); opacity: 0.85; }
+}
+
+.animate-slide-up      { animation: slide-up 320ms var(--ease-out) both; }
+.animate-player-reveal { animation: player-reveal 560ms var(--ease-out) both; }
+.animate-bid-pop       { animation: bid-pop 460ms var(--ease-out) both; display: inline-block; transform-origin: left center; }
+.animate-row-flash     { animation: row-flash 1100ms var(--ease-out) both; }
+.animate-sold-in       { animation: sold-in 520ms cubic-bezier(0.34, 1.3, 0.64, 1) both; }
+
+.live-dot {
+  display: inline-block;
+  height: 8px;
+  width: 8px;
+  border-radius: 9999px;
+  background: var(--success);
+  animation: ping-ring 1.6s ease-out infinite;
+}
+
+.confetti-layer { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+.confetti-piece {
+  position: absolute;
+  top: 0;
+  border-radius: 2px;
+  animation-name: confetti-fall;
+  animation-timing-function: cubic-bezier(0.25, 0.6, 0.4, 1);
+  animation-fill-mode: both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti-layer { display: none; }
+  .live-dot { animation: none; }
+}
+
+/* ============================================================
    SCROLLBAR
    ============================================================ */
 

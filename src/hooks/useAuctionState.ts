@@ -3,6 +3,18 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+export type LastSale = {
+  /** team_players row id — changes on every new sale / captain assignment */
+  id: string;
+  price: number;
+  acquired_via: string;
+  won_at: string;
+  player_name: string;
+  grade: string | null;
+  image_url: string | null;
+  team_name: string;
+};
+
 export type AuctionStateResponse = {
   auction: {
     id: string;
@@ -37,6 +49,8 @@ export type AuctionStateResponse = {
     created_at: string;
   } | null;
   counts: Record<string, number>;
+  /** Most recent sale in this auction — drives the SOLD celebration. */
+  lastSale: LastSale | null;
   teams: Array<{
     id: string;
     name: string;

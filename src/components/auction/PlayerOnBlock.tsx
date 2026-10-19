@@ -32,7 +32,11 @@ export function PlayerOnBlock({
     highestBid && teams ? teams.find((t) => t.id === highestBid.team_id) : null;
 
   return (
-    <div className="rounded-xl border border-[var(--line-1)] bg-[var(--bg-1)] overflow-hidden">
+    // key → remounts (and replays the reveal) every time a new player is drawn
+    <div
+      key={player.id}
+      className="rounded-xl border border-[var(--line-1)] bg-[var(--bg-1)] overflow-hidden animate-player-reveal"
+    >
       <div className="flex flex-col md:flex-row">
         {/* Photo */}
 <div className="md:w-[220px] shrink-0 md:border-r border-b md:border-b-0 border-[var(--line-1)] bg-[var(--bg-0)]">
@@ -100,13 +104,22 @@ export function PlayerOnBlock({
             <div className="text-[11px] uppercase tracking-[0.08em] text-[var(--accent)]">
               Current bid
             </div>
-            <div className="text-[32px] md:text-[36px] font-semibold text-[var(--accent)] mt-1.5 tnum leading-none">
+            {/* key → pops every time a new highest bid lands */}
+            <div
+              key={highestBid?.id ?? "no-bid"}
+              className={`text-[32px] md:text-[36px] font-semibold text-[var(--accent)] mt-1.5 tnum leading-none ${
+                highestBid ? "animate-bid-pop" : ""
+              }`}
+            >
               {currentBid && currentBid > 0
                 ? formatINR(currentBid, { compact: true })
                 : "—"}
             </div>
             {leader && (
-              <div className="text-[12px] text-[var(--fg-3)] mt-2 truncate">
+              <div
+                key={leader.id}
+                className="text-[12px] text-[var(--fg-3)] mt-2 truncate animate-fade-up"
+              >
                 Leading: <span className="text-[var(--fg-1)]">{leader.name}</span>
               </div>
             )}

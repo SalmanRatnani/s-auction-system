@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useAuctionState } from "@/hooks/useAuctionState";
 import { Card, CardBody } from "@/components/ui/card";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
+import { SoldCelebration } from "@/components/auction/SoldCelebration";
+import { AnimatedAmount } from "@/components/ui/animated-amount";
 import { getBasePrice } from "@/constants/categories";
-import { formatINR } from "@/lib/utils";
 
 export function LiveViewer({
   auctionId,
@@ -31,6 +32,7 @@ export function LiveViewer({
 
   return (
     <div className="space-y-6 max-w-6xl animate-fade-up">
+      <SoldCelebration lastSale={state.lastSale} />
       <header className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-[22px] font-semibold tracking-tight">
@@ -39,10 +41,11 @@ export function LiveViewer({
           <p className="text-[13px] text-[var(--fg-3)] mt-1">
             {auction?.name} ·{" "}
             <span
-              className={
+              className={`inline-flex items-center gap-1.5 ${
                 isLive ? "text-[var(--success)]" : "text-[var(--warning)]"
-              }
+              }`}
             >
+              {isLive && <span className="live-dot" aria-hidden />}
               {auction?.status}
             </span>
           </p>
@@ -73,12 +76,12 @@ export function LiveViewer({
             Teams{teamLinkBase ? " · tap to view roster" : ""}
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-            {teams.map((t) => {
+            {teams.map((t, i) => {
               const card = (
                 <Card
                   className={
                     teamLinkBase
-                      ? "hover:border-[var(--accent-line)] transition-colors duration-100 cursor-pointer h-full"
+                      ? "hover:border-[var(--accent-line)] hover:-translate-y-0.5 transition-[border-color,transform] duration-200 cursor-pointer h-full"
                       : "h-full"
                   }
                 >
@@ -99,7 +102,7 @@ export function LiveViewer({
                     </div>
                     {showPurse && (
                       <div className="text-[12px] font-mono text-[var(--accent)] tnum mt-1">
-                        {formatINR(t.remaining_purse, { compact: true })}
+                        <AnimatedAmount value={t.remaining_purse} />
                       </div>
                     )}
                     <div className="text-[10px] text-[var(--fg-4)] tnum mt-0.5">
@@ -108,12 +111,20 @@ export function LiveViewer({
                   </CardBody>
                 </Card>
               );
+              const delay = { animationDelay: `${i * 50}ms` };
               return teamLinkBase ? (
-                <Link key={t.id} href={`${teamLinkBase}/${t.id}`}>
+                <Link
+                  key={t.id}
+                  href={`${teamLinkBase}/${t.id}`}
+                  className="block animate-fade-up"
+                  style={delay}
+                >
                   {card}
                 </Link>
               ) : (
-                <div key={t.id}>{card}</div>
+                <div key={t.id} className="animate-fade-up" style={delay}>
+                  {card}
+                </div>
               );
             })}
           </div>

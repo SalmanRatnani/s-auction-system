@@ -5,6 +5,7 @@ import { useAuctionState } from "@/hooks/useAuctionState";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
+import { SoldCelebration } from "@/components/auction/SoldCelebration";
 import { CategoryPicker } from "@/components/auction/CategoryPicker";
 import { getBasePrice } from "@/constants/categories";
 import {
@@ -73,6 +74,7 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
 
   return (
     <div className="space-y-6 max-w-6xl animate-fade-up">
+      <SoldCelebration lastSale={state.lastSale} />
       <header className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-[22px] font-semibold tracking-tight">
@@ -156,7 +158,7 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
       )}
 
       {err && (
-        <div className="text-[13px] rounded-lg p-3 border border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger)]">
+        <div className="text-[13px] rounded-lg p-3 border border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger)] animate-fade-down">
           {err}
         </div>
       )}
@@ -172,7 +174,7 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
           />
 
           {isCaptain && captainTeam && (
-            <div className="rounded-lg border border-[var(--accent-line)] bg-[var(--bg-1)] p-4">
+            <div className="rounded-lg border border-[var(--accent-line)] bg-[var(--bg-1)] p-4 animate-scale-in">
               <div className="text-[13px] font-medium text-[var(--accent)]">
                 Playing captain of {captainTeam.name}
               </div>

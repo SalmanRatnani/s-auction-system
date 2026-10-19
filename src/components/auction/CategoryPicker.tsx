@@ -52,7 +52,7 @@ export function CategoryPicker({
       </div>
 
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-        {CATEGORY_ORDER.map((cat) => {
+        {CATEGORY_ORDER.map((cat, i) => {
           const remaining = counts[cat] ?? 0;
           const empty = remaining === 0;
           const isBusy = busy === cat;
@@ -62,9 +62,11 @@ export function CategoryPicker({
               type="button"
               onClick={() => draw(cat)}
               disabled={disabled || empty || busy !== null}
+              style={{ animationDelay: `${i * 22}ms` }}
               className={cn(
-                "group rounded-lg border border-[var(--line-1)] bg-[var(--bg-0)] p-3 text-left",
-                "transition-colors duration-100",
+                "group rounded-lg border border-[var(--line-1)] bg-[var(--bg-0)] p-3 text-left animate-fade-up",
+                "transition-[border-color,background-color,transform] duration-150",
+                "hover:-translate-y-0.5 active:scale-[0.97]",
                 "hover:border-[var(--accent-line)] hover:bg-[var(--bg-2)]",
                 "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[var(--line-1)] disabled:hover:bg-[var(--bg-0)]"
               )}

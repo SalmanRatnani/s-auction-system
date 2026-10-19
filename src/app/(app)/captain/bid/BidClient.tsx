@@ -6,6 +6,8 @@ import { useBidAlerts, unlockAudio } from "@/hooks/useBidAlerts";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
+import { SoldCelebration } from "@/components/auction/SoldCelebration";
+import { AnimatedAmount } from "@/components/ui/animated-amount";
 import {
   getBasePrice,
   getIncrement,
@@ -104,6 +106,7 @@ const increment = current?.player?.grade
 
   return (
     <div className="max-w-3xl space-y-4 animate-fade-up">
+      <SoldCelebration lastSale={state.lastSale} />
       <header className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-[22px] font-semibold tracking-tight">Bid</h1>
@@ -117,7 +120,7 @@ const increment = current?.player?.grade
               Your purse
             </div>
             <div className="text-[18px] font-semibold text-[var(--accent)] tnum">
-              {formatINR(myTeam.remaining_purse, { compact: true })}
+              <AnimatedAmount value={myTeam.remaining_purse} />
             </div>
             <div className="text-[11px] text-[var(--fg-4)] tnum">
               {myTeam.squad_count}/{maxSquad} players
@@ -136,7 +139,7 @@ const increment = current?.player?.grade
 
       {msg && (
         <div
-          className={`text-[13px] rounded-lg p-3 border ${
+          className={`text-[13px] rounded-lg p-3 border animate-fade-down ${
             msg.kind === "err"
               ? "border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger)]"
               : "border-[var(--success-line)] bg-[var(--success-bg)] text-[var(--success)]"
@@ -156,7 +159,7 @@ const increment = current?.player?.grade
             teams={teams.map((t) => ({ id: t.id, name: t.name }))}
           />
           {isCaptain && captainTeam && (
-            <div className="rounded-lg border border-[var(--accent-line)] bg-[var(--bg-1)] p-4">
+            <div className="rounded-lg border border-[var(--accent-line)] bg-[var(--bg-1)] p-4 animate-scale-in">
               <div className="text-[13px] font-medium text-[var(--accent)]">
                 {current.player.name} is the playing captain of {captainTeam.name}
               </div>
@@ -167,7 +170,7 @@ const increment = current?.player?.grade
             </div>
           )}
           {alreadyOwnsCategory && !isCaptain && myTeam && currentGrade && (
-            <div className="rounded-lg border border-[var(--warning-line)] bg-[var(--warning-bg)] p-4">
+            <div className="rounded-lg border border-[var(--warning-line)] bg-[var(--warning-bg)] p-4 animate-scale-in">
               <div className="text-[13px] text-[var(--warning)] font-medium">
                 You already own a {currentGrade} player
               </div>
@@ -178,7 +181,7 @@ const increment = current?.player?.grade
             </div>
           )}
           {isMyLead && (
-            <div className="rounded-lg border border-[var(--success-line)] bg-[var(--success-bg)] p-4 text-center">
+            <div className="rounded-lg border border-[var(--success-line)] bg-[var(--success-bg)] p-4 text-center animate-scale-in">
               <div className="flex items-center justify-center gap-2 text-[13px] text-[var(--success)] font-medium">
                 <Check size={14} strokeWidth={2.5} />
                 You are the highest bidder

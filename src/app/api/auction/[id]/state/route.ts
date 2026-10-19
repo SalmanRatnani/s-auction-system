@@ -160,6 +160,54 @@ export async function GET(
     (gradesByTeam[r.team_id] ??= []).push(p.grade);
   });
 
+  // --- Most recent sale (drives the SOLD celebration on every screen) ---
+  const { data: lastTp } = await admin
+    .from("team_players")
+    .select(
+      `id, price, acquired_via, won_at,
+       player:players (name, grade, image_url),
+       team:teams (name)`
+    )
+    .eq("auction_id", id)
+    .order("won_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let lastSale: {
+    id: string;
+    price: number;
+    acquired_via: string;
+    won_at: string;
+    player_name: string;
+    grade: string | null;
+    image_url: string | null;
+    team_name: string;
+  } | null = null;
+
+  if (lastTp) {
+    const lp = one<{ name: string; grade: string | null; image_url: string | null }>(
+      lastTp.player as
+        | { name: string; grade: string | null; image_url: string | null }
+        | { name: string; grade: string | null; image_url: string | null }[]
+        | null
+    );
+    const lt = one<{ name: string }>(
+      lastTp.team as { name: string } | { name: string }[] | null
+    );
+    if (lp && lt) {
+      lastSale = {
+        id: lastTp.id,
+        price: Number(lastTp.price),
+        acquired_via: lastTp.acquired_via,
+        won_at: lastTp.won_at,
+        player_name: lp.name,
+        grade: lp.grade,
+        image_url: lp.image_url,
+        team_name: lt.name,
+      };
+    }
+  }
+
   // Purse is only exposed to authenticated users.
   // Public viewers get a copy with purses zeroed out.
   const teams = (teamsRaw ?? []).map((t) => {
@@ -184,6 +232,7 @@ export async function GET(
     current,
     highestBid,
     counts,
+    lastSale,
     teams,
   });
 }
