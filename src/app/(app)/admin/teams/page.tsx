@@ -41,7 +41,7 @@ async function Inner() {
     : null;
   const teamsError = originalQuery?.error ?? (needsMigration ? null : fullQuery.error);
   const teams = needsMigration
-    ? (originalQuery?.data ?? []).map((team) => ({ ...team, co_captain_user_id: null }))
+    ? (originalQuery?.data ?? []).map((team) => ({ ...team, co_captain_user_id: null, co_captain_player_id: null }))
     : fullQuery.data ?? [];
 
   const { data: users } = await supabase
