@@ -29,7 +29,7 @@ async function Inner() {
   // Fall back to the original schema rather than showing zero teams.
   const fullQuery = await supabase
     .from("teams")
-    .select("id, name, logo_url, captain_user_id, co_captain_user_id, captain_player_id, initial_purse, created_at")
+    .select("id, name, logo_url, captain_user_id, co_captain_user_id, captain_player_id, co_captain_player_id, initial_purse, created_at")
     .eq("auction_id", auction.id)
     .order("created_at", { ascending: true });
   const needsMigration = isMissingPartnerColumn(fullQuery.error);
@@ -53,7 +53,7 @@ async function Inner() {
   // already chosen as a captain (they flip to SOLD once assigned, and would
   // otherwise vanish from their own team's dropdown).
   const assignedCaptainIds = (teams ?? [])
-    .map((t) => t.captain_player_id)
+    .flatMap((t) => [t.captain_player_id, t.co_captain_player_id])
     .filter((v): v is string => !!v);
 
   let playersQuery = supabase
@@ -105,7 +105,7 @@ async function Inner() {
             users={users ?? []}
             players={players ?? []}
             takenPlayerIds={assignedCaptainIds.filter(
-              (pid) => pid !== t.captain_player_id
+              (pid) => pid !== t.captain_player_id && pid !== t.co_captain_player_id
             )}
           />
         ))}

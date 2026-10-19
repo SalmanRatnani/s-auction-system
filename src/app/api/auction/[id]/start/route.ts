@@ -53,8 +53,14 @@ export async function POST(
   // Playing captains are seeded like everyone else: they are drawn normally,
   // and the state endpoint flags them so the auctioneer assigns them to their
   // team instead of opening bidding.
-  const { data: players } = await admin
+  const { data: allPlayers } = await admin
     .from("players").select("id").eq("status", "IN_POOL");
+  const { data: capTeams, error: capErr } = await admin.from("teams")
+    .select("captain_player_id, co_captain_player_id").eq("auction_id", id);
+  if (capErr) return NextResponse.json({ error: capErr.message }, { status: 500 });
+  const reserved = new Set((capTeams ?? []).flatMap((t) =>
+    [t.captain_player_id, t.co_captain_player_id].filter((v): v is string => !!v)));
+  const players = (allPlayers ?? []).filter((p) => !reserved.has(p.id));
 
   if (players && players.length > 0) {
     const rows = players.map((p, idx) => ({

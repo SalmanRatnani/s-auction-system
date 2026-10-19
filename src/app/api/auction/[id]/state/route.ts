@@ -75,7 +75,7 @@ export async function GET(
       .from("teams")
       .select("id, name")
       .eq("auction_id", id)
-      .eq("captain_player_id", currentPlayer.id)
+      .or(`captain_player_id.eq.${currentPlayer.id},co_captain_player_id.eq.${currentPlayer.id}`)
       .limit(1)
       .maybeSingle();
     captainTeam = team ?? null;

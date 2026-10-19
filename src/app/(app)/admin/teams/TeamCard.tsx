@@ -28,6 +28,7 @@ type Team = {
   captain_user_id: string | null;
   co_captain_user_id: string | null;
   captain_player_id: string | null;
+  co_captain_player_id: string | null;
   initial_purse: number;
 };
 
@@ -216,7 +217,7 @@ export function TeamCard({
         {/* Playing Captain (Player) */}
         <div className="space-y-1.5">
           <label className="block text-[10px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
-            Playing Captain (Optional)
+            Playing Captain 1 (Optional)
           </label>
           <select
             value={team.captain_player_id ?? ""}
@@ -225,7 +226,7 @@ export function TeamCard({
             className="h-9 w-full rounded-md bg-[var(--bg-1)] border border-[var(--line-1)] px-2.5 text-[12px] text-[var(--fg-1)] focus:outline-none focus:border-[var(--accent-line)]"
           >
             <option value="">— none —</option>
-            {captainOptions.map((p) => (
+            {captainOptions.filter((p) => p.id !== team.co_captain_player_id).map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} ({p.grade})
               </option>
@@ -236,6 +237,25 @@ export function TeamCard({
             registered player is drawn after ordinary players in their grade,
             then assigned at the average sold price (or base price if none sold).
           </p>
+        </div>
+
+        {/* Optional second playing captain, independent of login partnership */}
+        <div className="space-y-1.5">
+          <label className="block text-[10px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
+            Playing Captain 2 (Optional)
+          </label>
+          <select
+            value={team.co_captain_player_id ?? ""}
+            disabled={busy || uploading}
+            onChange={(e) => patch({ co_captain_player_id: e.target.value || null })}
+            className="h-9 w-full rounded-md bg-[var(--bg-1)] border border-[var(--line-1)] px-2.5 text-[12px] text-[var(--fg-1)] focus:outline-none focus:border-[var(--accent-line)]"
+          >
+            <option value="">— none —</option>
+            {captainOptions.filter((p) => p.id !== team.captain_player_id).map((p) => (
+              <option key={p.id} value={p.id}>{p.name} ({p.grade})</option>
+            ))}
+          </select>
+          <p className="text-[10px] text-[var(--fg-4)]">A second registered player reserved for final allotment. Both playing captains share the team's roster and purse.</p>
         </div>
 
         {/* Team name */}

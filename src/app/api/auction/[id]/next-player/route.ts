@@ -80,46 +80,17 @@ export async function POST(
     );
   }
 
-  // Playing captains are optional. When configured, defer their draw until
-  // all ordinary players of the *same grade* have had an auction attempt.
-  // This gives the captain-assignment price a meaningful comparison sample.
-  const { data: captainTeams, error: captainsError } = await admin
-    .from("teams")
-    .select("captain_player_id")
-    .eq("auction_id", id)
-    .not("captain_player_id", "is", null);
-  if (captainsError) {
-    return NextResponse.json({ error: captainsError.message }, { status: 500 });
-  }
-
-  const captainPlayerIds = new Set(
-    (captainTeams ?? [])
-      .map((t) => t.captain_player_id)
-      .filter((captainId): captainId is string => captainId !== null)
-  );
-  const gradeOf = (row: (typeof candidates)[number]) => {
-    const player = Array.isArray(row.players) ? row.players[0] : row.players;
-    return player?.grade ?? null;
-  };
-  const pendingOrdinaryGrades = new Set(
-    candidates
-      .filter((row) => !captainPlayerIds.has(row.player_id))
-      .map(gradeOf)
-      .filter((grade): grade is string => grade !== null)
-  );
-  const eligible = candidates.filter(
-    (row) =>
-      !captainPlayerIds.has(row.player_id) ||
-      !pendingOrdinaryGrades.has(gradeOf(row) ?? "")
-  );
-
-  if (eligible.length === 0) {
-    return NextResponse.json({ error: "No eligible player can be drawn yet" }, { status: 409 });
-  }
-
-  // Still random among eligible players. Captain players are NOT permanently
-  // excluded; after ordinary players leave PENDING they become eligible.
-  const picked = eligible[Math.floor(Math.random() * eligible.length)];
+  // Registered playing captains are pre-reserved for final allotment.
+  const { data: reserved, error: reservedError } = await admin.from("teams")
+    .select("captain_player_id, co_captain_player_id").eq("auction_id", id);
+  if (reservedError) return NextResponse.json({ error: reservedError.message }, { status: 500 });
+  const reservedIds = new Set((reserved ?? []).flatMap((t) =>
+    [t.captain_player_id, t.co_captain_player_id].filter((v): v is string => !!v)));
+  const available = candidates.filter((candidate) => !reservedIds.has(candidate.player_id));
+  if (available.length === 0) return NextResponse.json({
+    error: "No ordinary players left to draw. Reserved playing captains are allotted after the auction rounds."
+  }, { status: 409 });
+  const picked = available[Math.floor(Math.random() * available.length)];
 
   // Claim only a still-pending player. Another auctioneer might have drawn
   // the same player while this request was in flight.
