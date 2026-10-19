@@ -1,0 +1,44 @@
+name: Auction SQL integration
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "tests/sql/**"
+      - ".github/workflows/auction-integration.yml"
+  workflow_dispatch:
+
+jobs:
+  postgres-auction:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGDATABASE: auction_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install psql
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+      - name: Prepare test schema
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/fixture.sql
+      - name: Apply migrations on isolated database
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0015_team_captain_partnerships.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0016_dual_playing_captain_slots.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0017_finalize_playing_captains.sql
+      - name: Exercise auction lifecycle
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/auction-flow.sql
