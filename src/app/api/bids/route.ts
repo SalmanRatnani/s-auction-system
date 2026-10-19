@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     amount?: number;
   };
 
-  if (!body.auctionPlayerId || !body.amount || body.amount <= 0) {
+  if (typeof body.auctionPlayerId !== "string" || !/^[0-9a-f-]{36}$/i.test(body.auctionPlayerId) || !Number.isSafeInteger(body.amount) || (body.amount ?? 0) <= 0) {
     return NextResponse.json({ error: "Missing auctionPlayerId or amount" }, { status: 400 });
   }
 
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase.rpc("place_bid", {
     p_auction_player_id: body.auctionPlayerId,
-    p_amount: Math.round(body.amount),
+    p_amount: body.amount,
   });
 
   if (error) {
