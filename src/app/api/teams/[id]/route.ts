@@ -122,6 +122,17 @@ export async function DELETE(
     );
   }
 
+  // --- Delete the logo from Storage ---
+  const logoUrl = (team as { logo_url: string | null }).logo_url;
+  if (logoUrl) {
+    const parts = logoUrl.split("/team-logos/");
+    if (parts.length === 2) {
+      const filePath = parts[1];
+      await admin.storage.from("team-logos").remove([filePath]);
+    }
+  }
+
+  // --- Delete the team row ---
   const { error } = await admin.from("teams").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
