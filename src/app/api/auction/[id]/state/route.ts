@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CATEGORY_ORDER } from "@/constants/categories";
+import { isMissingPartnerColumn } from "@/lib/teams-compat";
 
 /** Supabase returns embedded joins as an object OR a one-element array. */
 function one<T>(v: T | T[] | null | undefined): T | null {
@@ -121,11 +122,19 @@ export async function GET(
   });
 
   // --- Teams ---
-  const { data: teamsRaw } = await admin
-    .from("teams")
+  const fullTeams = await admin.from("teams")
     .select("id, name, logo_url, captain_user_id, co_captain_user_id, initial_purse")
-    .eq("auction_id", id)
-    .order("created_at", { ascending: true });
+    .eq("auction_id", id).order("created_at", { ascending: true });
+  const fallback = isMissingPartnerColumn(fullTeams.error)
+    ? await admin.from("teams")
+        .select("id, name, logo_url, captain_user_id, initial_purse")
+        .eq("auction_id", id).order("created_at", { ascending: true })
+    : null;
+  const teamsError = fallback?.error ?? (fallback ? null : fullTeams.error);
+  if (teamsError) return NextResponse.json({ error: teamsError.message }, { status: 500 });
+  const teamsRaw = fallback
+    ? (fallback.data ?? []).map((team) => ({ ...team, co_captain_user_id: null }))
+    : fullTeams.data ?? [];
 
   const { data: purses } = await admin
     .from("team_purses")

@@ -8,6 +8,7 @@ import { TeamEditor } from "./TeamEditor";
 import { formatINR } from "@/lib/utils";
 import { toneForGrade } from "@/constants/categories";
 import { getOrCreateDraftAuction } from "@/lib/auction";
+import { isMissingPartnerColumn } from "@/lib/teams-compat";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +28,19 @@ async function Inner() {
   const auction = await getOrCreateDraftAuction();
   if (!auction) return <div className="text-[var(--danger)]">No auction.</div>;
 
-  const { data: team } = await supabase
-    .from("teams")
+  const teamQuery = await supabase.from("teams")
     .select("id, name, logo_url, captain_user_id, co_captain_user_id, initial_purse")
     .eq("auction_id", auction.id)
     .or(`captain_user_id.eq.${user!.id},co_captain_user_id.eq.${user!.id}`)
     .maybeSingle();
+  const fallback = isMissingPartnerColumn(teamQuery.error)
+    ? await supabase.from("teams")
+        .select("id, name, logo_url, captain_user_id, initial_purse")
+        .eq("auction_id", auction.id).eq("captain_user_id", user!.id).maybeSingle()
+    : null;
+  const teamError = fallback?.error ?? (fallback ? null : teamQuery.error);
+  if (teamError) return <div role="alert" className="text-[var(--danger)]">Could not load team: {teamError.message}</div>;
+  const team = fallback ? (fallback.data ? { ...fallback.data, co_captain_user_id: null } : null) : teamQuery.data;
 
   if (!team) {
     return (
