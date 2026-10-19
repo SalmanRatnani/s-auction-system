@@ -38,7 +38,7 @@ async function Inner({ params }: { params: Promise<{ teamId: string }> }) {
 
   const { data: teamRow } = await supabase
     .from("teams")
-    .select("id, name, logo_url, captain_user_id, initial_purse")
+    .select("id, name, logo_url, captain_user_id, co_captain_user_id, initial_purse")
     .eq("id", teamId)
     .eq("auction_id", auction.id)
     .maybeSingle();
@@ -46,13 +46,16 @@ async function Inner({ params }: { params: Promise<{ teamId: string }> }) {
   if (!teamRow) notFound();
 
   let captainDisplay: string | null = null;
-  if (teamRow.captain_user_id) {
-    const { data: captain } = await supabase
+  const captainIds = [teamRow.captain_user_id, teamRow.co_captain_user_id].filter((id): id is string => !!id);
+  if (captainIds.length) {
+    const { data: captains } = await supabase
       .from("users")
-      .select("display_name, email")
-      .eq("id", teamRow.captain_user_id)
-      .maybeSingle();
-    captainDisplay = captain?.display_name ?? captain?.email ?? null;
+      .select("id, display_name, email")
+      .in("id", captainIds);
+    captainDisplay = captainIds.map((id) => {
+      const user = captains?.find((person) => person.id === id);
+      return user?.display_name ?? user?.email ?? "Captain";
+    }).join(" / ");
   }
 
   const { data: purseRow } = await supabase

@@ -29,9 +29,9 @@ async function Inner() {
 
   const { data: team } = await supabase
     .from("teams")
-    .select("id, name, logo_url, captain_user_id, initial_purse")
+    .select("id, name, logo_url, captain_user_id, co_captain_user_id, initial_purse")
     .eq("auction_id", auction.id)
-    .eq("captain_user_id", user!.id)
+    .or(`captain_user_id.eq.${user!.id},co_captain_user_id.eq.${user!.id}`)
     .maybeSingle();
 
   if (!team) {

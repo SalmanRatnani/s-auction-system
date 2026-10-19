@@ -68,7 +68,7 @@ export async function PATCH(
 
   const isController = user.role === "MAIN_CONTROLLER";
   const isOwnCaptain =
-    (team as { captain_user_id: string | null }).captain_user_id === user.id;
+    ((team as { captain_user_id: string | null }).captain_user_id === user.id || (team as { co_captain_user_id: string | null }).co_captain_user_id === user.id);
 
   if (!isController && !isOwnCaptain) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -77,6 +77,7 @@ export async function PATCH(
   const body = (await request.json().catch(() => ({}))) as {
     name?: string;
     captain_user_id?: string | null;
+    co_captain_user_id?: string | null;
     captain_player_id?: string | null;
   };
 
@@ -114,6 +115,17 @@ export async function PATCH(
           .eq("id", body.captain_user_id);
       }
     }
+  }
+
+  if ("co_captain_user_id" in body) {
+    if (!isController) return NextResponse.json({ error: "Only the controller can assign captain partners" }, { status: 403 });
+    const partnerId = body.co_captain_user_id ?? null;
+    if (partnerId) {
+      const { data: partner } = await createAdminClient().from("users").select("id, role").eq("id", partnerId).maybeSingle();
+      if (!partner) return NextResponse.json({ error: "Partner login not found" }, { status: 404 });
+      if (partnerId === (body.captain_user_id ?? (team as { captain_user_id: string | null }).captain_user_id)) return NextResponse.json({ error: "Captain and partner cannot be the same login" }, { status: 409 });
+    }
+    update.co_captain_user_id = partnerId;
   }
 
   // Only controller can assign/reassign the playing captain (a player)
@@ -175,6 +187,10 @@ export async function PATCH(
     .from("teams").update(update).eq("id", id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  if (update.co_captain_user_id) {
+    const { error: promotionError } = await admin.from("users").update({ role: "CAPTAIN" }).eq("id", update.co_captain_user_id).eq("role", "VIEWER");
+    if (promotionError) console.error("Partner promotion failed", promotionError);
+  }
   await admin.from("audit_log").insert({
     actor_user_id: user.id,
     action: "TEAM_UPDATED",
