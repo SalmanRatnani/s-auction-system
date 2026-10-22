@@ -3,7 +3,7 @@ insert into public.users (id,role,display_name) values
  ('10000000-0000-4000-8000-000000000001','MAIN_CONTROLLER','Controller'),
  ('10000000-0000-4000-8000-000000000002','CAPTAIN','Captain');
 insert into public.auctions (id,status,config) values
- ('10000000-0000-4000-8000-00000000a001','LIVE',
+ ('10000000-0000-4000-8000-00000000a001','DRAFT',
   '{"basePrices":{"A1":10000},"increments":{"A1":2000},"maxSquad":2}');
 insert into public.players (id,name,grade) values
  ('10000000-0000-4000-8000-00000000c001','Player 1','A1'),
@@ -11,6 +11,7 @@ insert into public.players (id,name,grade) values
 insert into public.teams (id,auction_id,name,captain_user_id,initial_purse)
 values ('10000000-0000-4000-8000-00000000b001','10000000-0000-4000-8000-00000000a001',
  'Test Team','10000000-0000-4000-8000-000000000002',10000000000);
+update public.auctions set status='LIVE' where id='10000000-0000-4000-8000-00000000a001';
 insert into public.auction_players (id,auction_id,player_id,round,status) values
  ('10000000-0000-4000-8000-00000000d001','10000000-0000-4000-8000-00000000a001',
   '10000000-0000-4000-8000-00000000c001',1,'CURRENT'),
