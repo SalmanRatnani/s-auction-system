@@ -60,8 +60,8 @@ async function Inner() {
           Purse Manager
         </h1>
         <p className="text-[13px] text-[var(--fg-3)] mt-1">
-          Top up captains who are running out of purse, or adjust after a
-          correction.
+          Team purses are virtual auction credits (not real money). Top up
+          captains or correct balances when needed.
         </p>
       </header>
 
