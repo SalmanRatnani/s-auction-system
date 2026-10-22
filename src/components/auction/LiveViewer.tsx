@@ -11,13 +11,15 @@ import { getBasePrice } from "@/constants/categories";
 export function LiveViewer({
   auctionId,
   showPurse = false,
+  viewerToken,
   teamLinkBase,
 }: {
   auctionId: string;
   showPurse?: boolean;
+  viewerToken?: string;
   teamLinkBase?: string;
 }) {
-  const { state, loading, realtimeConnected } = useAuctionState(auctionId, 2500);
+  const { state, loading, realtimeConnected } = useAuctionState(auctionId, 2500, viewerToken);
 
   if (loading || !state) {
     return <div className="text-[13px] text-[var(--fg-3)]">Loading…</div>;
