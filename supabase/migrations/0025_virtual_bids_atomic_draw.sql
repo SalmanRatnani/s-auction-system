@@ -82,7 +82,7 @@ begin
   select coalesce(max(b.amount), 0) into v_highest
   from public.bids b where b.auction_player_id = new.auction_player_id
     and not b.is_undone;
-  if new.amount < case when v_highest = 0 then v_base else v_highest + v_increment end then
+  if new.amount < (case when v_highest = 0 then v_base else v_highest + v_increment end) then
     raise exception 'Minimum allowed bid is % paise (virtual credits)',
       case when v_highest = 0 then v_base else v_highest + v_increment end;
   end if;
