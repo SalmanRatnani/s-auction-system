@@ -1,5 +1,5 @@
+import { verifyWebhookSignature, validResponseId, MAX_WEBHOOK_BYTES } from "@/lib/security/webhook";
 import { NextResponse, type NextRequest } from "next/server";
-import crypto from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -19,24 +19,6 @@ type Body = {
   warning?: string;
 };
 
-function verifySignature(rawBody: string, signature: string | null) {
-  if (!signature) return false;
-  const secret = process.env.REGISTRATION_WEBHOOK_SECRET;
-  if (!secret) return false;
-  const expected = crypto
-    .createHmac("sha256", secret)
-    .update(rawBody)
-    .digest("hex");
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, "hex"),
-      Buffer.from(expected, "hex")
-    );
-  } catch {
-    return false;
-  }
-}
-
 /** Trimmed string, or null when empty / not a string. */
 function clean(v: unknown): string | null {
   if (typeof v !== "string") return null;
@@ -54,9 +36,11 @@ function normalizeHand(v: unknown): "Right" | "Left" | null {
 }
 
 export async function POST(request: NextRequest) {
+  if (Number(request.headers.get("content-length") || 0) > MAX_WEBHOOK_BYTES) return NextResponse.json({ error: "Payload too large" }, { status: 413 });
   const raw = await request.text();
+  if (Buffer.byteLength(raw, "utf8") > MAX_WEBHOOK_BYTES) return NextResponse.json({ error: "Payload too large" }, { status: 413 });
 
-  if (!verifySignature(raw, request.headers.get("x-signature"))) {
+  if (!verifyWebhookSignature(raw, request.headers.get("x-signature"), process.env.REGISTRATION_WEBHOOK_SECRET)) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -68,7 +52,7 @@ export async function POST(request: NextRequest) {
   }
 
   const name = clean(body.data?.name);
-  if (!body.responseId || !name) {
+  if (!validResponseId(body?.responseId) || !name || name.length > 200) {
     return NextResponse.json(
       { error: "responseId and name are required" },
       { status: 400 }
