@@ -6,9 +6,9 @@ import ts from "typescript";
 function load(path, names) {
   const source = readFileSync(new URL(path, import.meta.url), "utf8");
   const output = ts.transpileModule(source.replace(/export /g, ""), {
-    compilerOptions: { module: ts.ModuleKind.None, target: ts.ScriptTarget.ES2022 }
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
   }).outputText;
-  return new Function("require", output + "\nreturn {" + names.join(",") + "};")(requireStub);
+  return new Function("require", "exports", output + "\nreturn {" + names.join(",") + "};")(requireStub, {});
 }
 function requireStub(name) { if (name === "node:crypto") return requireCrypto; throw Error(name); }
 import * as requireCrypto from "node:crypto";
