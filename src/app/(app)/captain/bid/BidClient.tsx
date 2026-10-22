@@ -138,13 +138,13 @@ const increment = current?.player?.grade
         {myTeam && (
           <div className="text-right">
             <div className="text-[10px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
-              Your purse
+              Virtual purse
             </div>
             <div className="text-[18px] font-semibold text-[var(--accent)] tnum">
               <AnimatedAmount value={myTeam.remaining_purse} />
             </div>
             <div className="text-[11px] text-[var(--fg-4)] tnum">
-              {myTeam.squad_count}/{maxSquad} players · Available to bid: {formatINR(availableToBid, { compact: true })}
+              {myTeam.squad_count}/{maxSquad} players · Virtual credits available to bid: {formatINR(availableToBid, { compact: true })}
             </div>
           </div>
         )}

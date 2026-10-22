@@ -1,3 +1,4 @@
+import { validateViewerToken } from "@/lib/security/viewer";
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -22,20 +23,33 @@ type CurrentPlayer = {
 };
 
 export async function GET(
-  _req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
 
+  if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)) {
+    return NextResponse.json({ error: "Invalid auction ID" }, { status: 400 });
+  }
+  const userClient = await createClient();
+  const { data: { user } } = await userClient.auth.getUser();
+  const token = request.nextUrl.searchParams.get("viewerToken");
+  let isStaffOrCaptain = false;
+  if (user) {
+    const { data: profile } = await userClient.from("users").select("role").eq("id", user.id).maybeSingle();
+    isStaffOrCaptain = !!profile && ["MAIN_CONTROLLER", "AUCTIONEER", "CAPTAIN", "VIEWER"].includes(profile.role);
+  }
+  if (!isStaffOrCaptain && !(token && await validateViewerToken(token, id))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Start independent queries together: the previous waterfall delayed every
   // spectator and captain even when Realtime delivered a bid immediately.
-  const userClient = await createClient();
   const admin = createAdminClient();
   const [
-    authResult, auctionResult, rawCurrentResult, pendingResult,
+    auctionResult, rawCurrentResult, pendingResult,
     fullTeams, pursesResult, rostersResult, lastTpResult,
   ] = await Promise.all([
-    userClient.auth.getUser(),
     admin.from("auctions").select("*").eq("id", id).single(),
     admin.from("auction_players").select(`
       id, status, round, sold_price, sold_to_team_id,
@@ -60,7 +74,7 @@ export async function GET(
     ).eq("auction_id", id).order("won_at", { ascending: false })
       .limit(1).maybeSingle(),
   ]);
-  const isAuthed = !!authResult.data.user;
+  const isAuthed = !!user;
   const { data: auction } = auctionResult;
   const { data: rawCurrent } = rawCurrentResult;
   const { data: pending } = pendingResult;
@@ -244,11 +258,11 @@ export async function GET(
   });
 
   return NextResponse.json({
-    auction,
+    auction: { id: auction.id, name: auction.name, status: auction.status, mode: auction.mode, config: auction.config },
     current,
     highestBid,
     counts,
     lastSale,
     teams,
-  });
+  }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }

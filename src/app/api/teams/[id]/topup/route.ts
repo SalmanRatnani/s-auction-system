@@ -23,8 +23,8 @@ export async function POST(
     reason?: string;
   };
 
-  if (!body.amount || body.amount === 0) {
-    return NextResponse.json({ error: "amount required" }, { status: 400 });
+  if (!Number.isSafeInteger(body.amount) || (body.amount ?? 0) <= 0 || (body.amount ?? 0) > 100_000_000_000) {
+    return NextResponse.json({ error: "amount must be a positive safe integer in paise (max 100000000000)" }, { status: 400 });
   }
 
   const admin = createAdminClient();

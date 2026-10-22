@@ -77,7 +77,7 @@ type BidUpdate = {
  * Bids use the Realtime payload directly; no HTTP round trip is needed to
  * show a new leader. Full snapshots still reconcile sales, undo and purses.
  */
-export function useAuctionState(auctionId: string, pollMs = 2500) {
+export function useAuctionState(auctionId: string, pollMs = 2500, viewerToken?: string) {
   const [state, setState] = useState<AuctionStateResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
@@ -120,10 +120,14 @@ export function useAuctionState(auctionId: string, pollMs = 2500) {
     inFlightRef.current = true;
     const requestSequence = requestSequenceRef.current;
     try {
-      const response = await fetch(`/api/auction/${auctionId}/state`, {
+      const suffix = viewerToken ? `?viewerToken=${encodeURIComponent(viewerToken)}` : "";
+      const response = await fetch(`/api/auction/${auctionId}/state${suffix}`, {
         cache: "no-store",
       });
-      if (response.ok) {
+      if (response.status === 401 || response.status === 403 || response.status === 404) {
+        // Expired viewer links must not retain the last authorized snapshot.
+        setState(null);
+      } else if (response.ok) {
         const snapshot = await response.json() as AuctionStateResponse;
         // A Realtime bid can arrive while an older snapshot is in flight.
         // Never allow that outdated response to briefly replace the new leader.
@@ -150,7 +154,7 @@ export function useAuctionState(auctionId: string, pollMs = 2500) {
         void refresh();
       }
     }
-  }, [auctionId]);
+  }, [auctionId, viewerToken]);
 
   useEffect(() => {
     void refresh();

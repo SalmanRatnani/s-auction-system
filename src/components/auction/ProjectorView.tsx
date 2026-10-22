@@ -10,11 +10,13 @@ import { formatINR } from "@/lib/utils";
 export function ProjectorView({
   auctionId,
   showPurse = false,
+  viewerToken,
 }: {
   auctionId: string;
   showPurse?: boolean;
+  viewerToken?: string;
 }) {
-  const { state, loading, realtimeConnected } = useAuctionState(auctionId, 2000);
+  const { state, loading, realtimeConnected } = useAuctionState(auctionId, 2000, viewerToken);
 
   if (loading || !state) {
     return (

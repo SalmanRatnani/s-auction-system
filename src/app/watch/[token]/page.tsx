@@ -37,6 +37,7 @@ export default async function WatchPage({
     <main className="min-h-screen p-4 md:p-8">
       <LiveViewer
         auctionId={link.auction_id}
+        viewerToken={token}
         showPurse={false}
         teamLinkBase={`/watch/${token}/team`}
       />
