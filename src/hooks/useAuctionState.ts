@@ -77,7 +77,7 @@ type BidUpdate = {
  * Bids use the Realtime payload directly; no HTTP round trip is needed to
  * show a new leader. Full snapshots still reconcile sales, undo and purses.
  */
-export function useAuctionState(auctionId: string, pollMs = 2500) {
+export function useAuctionState(auctionId: string, pollMs = 2500, viewerToken?: string) {
   const [state, setState] = useState<AuctionStateResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
@@ -120,7 +120,8 @@ export function useAuctionState(auctionId: string, pollMs = 2500) {
     inFlightRef.current = true;
     const requestSequence = requestSequenceRef.current;
     try {
-      const response = await fetch(`/api/auction/${auctionId}/state`, {
+      const suffix = viewerToken ? `?viewerToken=${encodeURIComponent(viewerToken)}` : "";
+      const response = await fetch(`/api/auction/${auctionId}/state${suffix}`, {
         cache: "no-store",
       });
       if (response.ok) {
@@ -150,7 +151,7 @@ export function useAuctionState(auctionId: string, pollMs = 2500) {
         void refresh();
       }
     }
-  }, [auctionId]);
+  }, [auctionId, viewerToken]);
 
   useEffect(() => {
     void refresh();
