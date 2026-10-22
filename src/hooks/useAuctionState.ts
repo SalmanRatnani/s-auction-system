@@ -124,7 +124,10 @@ export function useAuctionState(auctionId: string, pollMs = 2500, viewerToken?: 
       const response = await fetch(`/api/auction/${auctionId}/state${suffix}`, {
         cache: "no-store",
       });
-      if (response.ok) {
+      if (response.status === 401 || response.status === 403 || response.status === 404) {
+        // Expired viewer links must not retain the last authorized snapshot.
+        setState(null);
+      } else if (response.ok) {
         const snapshot = await response.json() as AuctionStateResponse;
         // A Realtime bid can arrive while an older snapshot is in flight.
         // Never allow that outdated response to briefly replace the new leader.
