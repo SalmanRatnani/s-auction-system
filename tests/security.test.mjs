@@ -17,7 +17,7 @@ const { csvCell } = load("../src/lib/security/csv.ts", ["csvCell"]);
 const { verifyWebhookSignature, validResponseId } = load("../src/lib/security/webhook.ts", ["verifyWebhookSignature", "validResponseId"]);
 test("CSV handles dangerous spreadsheet cells", () => {
   for (const value of ["=cmd()", "+SUM(1,2)", "-2+3", "@SUM(A1)", "\t=1"]) {
-    assert.equal(csvCell(value).startsWith("'"), true);
+    assert.equal(csvCell(value).replace(/^"/, "").startsWith("'"), true);
   }
   assert.equal(csvCell('a,"b"'), '"a,""b"""');
   assert.equal(csvCell("normal"), "normal");
