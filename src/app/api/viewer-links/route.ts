@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { randomToken } from "@/lib/utils";
+import { randomBytes } from "node:crypto";
 
 export async function POST(request: NextRequest) {
   const userClient = await createClient();
@@ -19,12 +19,13 @@ export async function POST(request: NextRequest) {
     hoursValid?: number;
   };
 
-  if (!body.auctionId) {
+  if (!body.auctionId || !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(body.auctionId)) {
     return NextResponse.json({ error: "auctionId required" }, { status: 400 });
   }
 
-  const hours = Math.max(1, Math.min(72, body.hoursValid ?? 12));
-  const token = randomToken(32);
+  const hours = body.hoursValid ?? 12;
+  if (!Number.isInteger(hours) || hours < 1 || hours > 72) return NextResponse.json({ error: "hoursValid must be 1–72" }, { status: 400 });
+  const token = randomBytes(16).toString("hex");
   const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
 
   const admin = createAdminClient();
