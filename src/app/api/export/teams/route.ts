@@ -1,3 +1,4 @@
+import { csvCell } from "@/lib/security/csv";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -67,9 +68,4 @@ export async function GET() {
       "Content-Disposition": `attachment; filename="s-auction-teams-${Date.now()}.csv"`,
     },
   });
-}
-
-function csvCell(v: string) {
-  const s = String(v).replace(/"/g, '""');
-  return /[",\n]/.test(s) ? `"${s}"` : s;
 }
