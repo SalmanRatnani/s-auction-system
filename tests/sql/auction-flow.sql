@@ -84,7 +84,7 @@ insert into public.auction_players(auction_id,player_id,status) values
  ('00000000-0000-4000-8000-00000000a001','00000000-0000-4000-8000-00000000c008','CURRENT');
 select public.expect_error(
   $insert into public.auction_players(auction_id,player_id,status) values
-    ('00000000-0000-4000-8000-00000000a001','00000000-0000-4000-8000-00000000c001','CURRENT')$,
+    ('00000000-0000-4000-8000-00000000a001','00000000-0000-4000-8000-00000000c001' ,'CURRENT')$,
   'duplicate key');
 delete from public.auction_players where player_id='00000000-0000-4000-8000-00000000c008';
 -- The sole-CURRENT guard is enforced by a partial unique index.
