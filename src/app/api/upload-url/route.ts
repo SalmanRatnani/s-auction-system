@@ -1,29 +1,11 @@
+import { verifyWebhookSignature, validResponseId, MAX_WEBHOOK_BYTES } from "@/lib/security/webhook";
 import { NextResponse, type NextRequest } from "next/server";
-import crypto from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
 type FileMeta = { kind: "image" | "proof"; name: string; mimeType: string };
 type Body = { responseId: string; files: FileMeta[] };
-
-function verifySignature(rawBody: string, signature: string | null) {
-  if (!signature) return false;
-  const secret = process.env.REGISTRATION_WEBHOOK_SECRET;
-  if (!secret) return false;
-  const expected = crypto
-    .createHmac("sha256", secret)
-    .update(rawBody)
-    .digest("hex");
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, "hex"),
-      Buffer.from(expected, "hex")
-    );
-  } catch {
-    return false;
-  }
-}
 
 function extFromMime(mime: string, fallback = "bin") {
   const map: Record<string, string> = {
@@ -37,9 +19,11 @@ function extFromMime(mime: string, fallback = "bin") {
 }
 
 export async function POST(request: NextRequest) {
+  if (Number(request.headers.get("content-length") || 0) > MAX_WEBHOOK_BYTES) return NextResponse.json({ error: "Payload too large" }, { status: 413 });
   const raw = await request.text();
+  if (Buffer.byteLength(raw, "utf8") > MAX_WEBHOOK_BYTES) return NextResponse.json({ error: "Payload too large" }, { status: 413 });
 
-  if (!verifySignature(raw, request.headers.get("x-signature"))) {
+  if (!verifyWebhookSignature(raw, request.headers.get("x-signature"), process.env.REGISTRATION_WEBHOOK_SECRET)) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -50,7 +34,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!body.responseId || !Array.isArray(body.files)) {
+  if (!validResponseId(body?.responseId) || !Array.isArray(body.files) || body.files.length > 3) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
@@ -59,7 +43,7 @@ export async function POST(request: NextRequest) {
   const uploads = [];
 
   for (const f of body.files) {
-    if (f.kind !== "image" && f.kind !== "proof") continue;
+    if (!f || (f.kind !== "image" && f.kind !== "proof") || !["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(f.mimeType) || (f.kind === "image" && f.mimeType === "application/pdf")) return NextResponse.json({ error: "Invalid file type" }, { status: 400 });
 
     const bucket = f.kind === "image" ? "player-images" : "age-proofs";
     const ext = extFromMime(f.mimeType);
