@@ -1,4 +1,9 @@
-import { verifyWebhookSignature, validResponseId, MAX_WEBHOOK_BYTES } from "@/lib/security/webhook";
+import { readLimitedBody } from "@/lib/security/request";
+import {
+  verifyWebhookSignature,
+  validResponseId,
+  MAX_WEBHOOK_BYTES,
+} from "@/lib/security/webhook";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -19,11 +24,25 @@ function extFromMime(mime: string, fallback = "bin") {
 }
 
 export async function POST(request: NextRequest) {
-  if (Number(request.headers.get("content-length") || 0) > MAX_WEBHOOK_BYTES) return NextResponse.json({ error: "Payload too large" }, { status: 413 });
-  const raw = await request.text();
-  if (Buffer.byteLength(raw, "utf8") > MAX_WEBHOOK_BYTES) return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+  let raw: string;
+  try {
+    raw = new TextDecoder().decode(
+      await readLimitedBody(request, MAX_WEBHOOK_BYTES),
+    );
+  } catch {
+    return NextResponse.json(
+      { error: "Payload too large or unreadable" },
+      { status: 413 },
+    );
+  }
 
-  if (!verifyWebhookSignature(raw, request.headers.get("x-signature"), process.env.REGISTRATION_WEBHOOK_SECRET)) {
+  if (
+    !verifyWebhookSignature(
+      raw,
+      request.headers.get("x-signature"),
+      process.env.REGISTRATION_WEBHOOK_SECRET,
+    )
+  ) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -34,7 +53,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!validResponseId(body?.responseId) || !Array.isArray(body.files) || body.files.length > 3) {
+  if (
+    !validResponseId(body?.responseId) ||
+    !Array.isArray(body.files) ||
+    body.files.length > 3
+  ) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
@@ -43,7 +66,15 @@ export async function POST(request: NextRequest) {
   const uploads = [];
 
   for (const f of body.files) {
-    if (!f || (f.kind !== "image" && f.kind !== "proof") || !["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(f.mimeType) || (f.kind === "image" && f.mimeType === "application/pdf")) return NextResponse.json({ error: "Invalid file type" }, { status: 400 });
+    if (
+      !f ||
+      (f.kind !== "image" && f.kind !== "proof") ||
+      !["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(
+        f.mimeType,
+      ) ||
+      (f.kind === "image" && f.mimeType === "application/pdf")
+    )
+      return NextResponse.json({ error: "Invalid file type" }, { status: 400 });
 
     const bucket = f.kind === "image" ? "player-images" : "age-proofs";
     const ext = extFromMime(f.mimeType);
@@ -56,7 +87,7 @@ export async function POST(request: NextRequest) {
     if (error || !data) {
       return NextResponse.json(
         { error: `Signed URL failed for ${f.kind}: ${error?.message}` },
-        { status: 500 }
+        { status: 500 },
       );
     }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useAuctionState } from "@/hooks/useAuctionState";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
@@ -8,23 +8,38 @@ import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
 import { SoldCelebration } from "@/components/auction/SoldCelebration";
 import { CategoryPicker } from "@/components/auction/CategoryPicker";
 import { getBasePrice } from "@/constants/categories";
-import {
-  Pause,
-  Play,
-  Check,
-  Undo2,
-  X,
-} from "lucide-react";
+import { Pause, Play, Check, Undo2, X } from "lucide-react";
 
 export function ConsoleClient({ auctionId }: { auctionId: string }) {
-  const { state, loading, refresh, realtimeConnected } = useAuctionState(auctionId, 1500);
+  const { state, loading, refresh, realtimeConnected } = useAuctionState(
+    auctionId,
+    1500,
+  );
+  const inFlight = useRef(false);
   const [busy, setBusy] = useState<
-    null | "unsold" | "skip" | "sell" | "undo" | "pause" | "resume"
+    null | "unsold" | "skip" | "sell" | "undo" | "pause" | "resume" | "draw"
   >(null);
   const [err, setErr] = useState<string | null>(null);
 
   if (loading || !state) {
-    return <div className="text-[13px] text-[var(--fg-3)]">Loading auction…</div>;
+    return (
+      <div
+        role="status"
+        className="rounded-xl border border-[var(--line-2)] p-8 text-sm text-[var(--fg-3)]"
+      >
+        {loading
+          ? "Connecting to the auction…"
+          : "Auction unavailable. Check your connection or sign in again."}
+        {!loading && (
+          <button
+            onClick={() => void refresh()}
+            className="block text-[var(--accent)] mt-4"
+          >
+            Try again
+          </button>
+        )}
+      </div>
+    );
   }
 
   const { auction, current, highestBid, counts, teams } = state;
@@ -32,45 +47,56 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
   const isPaused = auction?.status === "PAUSED";
   const hasCurrent = !!current;
   const basePrice = current?.player?.grade
-  ? getBasePrice(auction?.config, current.player.grade)
-  : 0;
+    ? getBasePrice(auction?.config, current.player.grade)
+    : 0;
   const currentBid = highestBid?.amount ?? 0;
   const isRetry = (current?.round ?? 1) > 1;
-  const isLegacyRoundTwo = !!(auction as { round_two_started_at?: string | null })?.round_two_started_at;
+  const isLegacyRoundTwo = !!(
+    auction as { round_two_started_at?: string | null }
+  )?.round_two_started_at;
 
   // A playing captain is never bid on — the auctioneer assigns them.
   const captainTeam = current?.captainTeam ?? null;
   const isCaptain = !!captainTeam;
 
-  async function call(endpoint: string, label: string, confirmMsg?: string) {
-    if (confirmMsg && !window.confirm(confirmMsg)) return;
-    setBusy(label as typeof busy);
+  async function call(
+    endpoint: string,
+    label: NonNullable<typeof busy>,
+    confirmMsg?: string,
+    payload?: object,
+  ) {
+    if (inFlight.current || (confirmMsg && !window.confirm(confirmMsg))) return;
+    inFlight.current = true;
+    setBusy(label);
     setErr(null);
-    const res = await fetch(`/api/auction/${auctionId}/${endpoint}`, {
-      method: "POST",
-    });
-    const body = await res.json().catch(() => ({}));
-    setBusy(null);
-    if (!res.ok) {
-      setErr(body.error ?? "Failed");
-      return;
+    try {
+      const res = await fetch(`/api/auction/${auctionId}/${endpoint}`, {
+        method: "POST",
+        ...(payload
+          ? {
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            }
+          : {}),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErr(body.error ?? "The action could not be completed.");
+        return;
+      }
+      void refresh();
+    } catch {
+      setErr(
+        "Connection interrupted. Check the auction state before repeating the action.",
+      );
+      void refresh();
+    } finally {
+      inFlight.current = false;
+      setBusy(null);
     }
-    refresh();
   }
-
   async function drawNext(category: string) {
-    setErr(null);
-    const res = await fetch(`/api/auction/${auctionId}/next-player`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category }),
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setErr(body.error ?? "Draw failed");
-      return;
-    }
-    refresh();
+    await call("next-player", "draw", undefined, { category });
   }
 
   return (
@@ -82,7 +108,9 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
             Auction Console
           </h1>
           <p className="text-[11px] text-[var(--fg-3)] mt-1" role="status">
-            {realtimeConnected ? "● Realtime connected" : "○ Reconnecting · automatic refresh active"}
+            {realtimeConnected
+              ? "● Realtime connected"
+              : "○ Reconnecting · automatic refresh active"}
           </p>
           <p className="text-[13px] text-[var(--fg-3)] mt-1">
             {auction?.name} ·{" "}
@@ -91,8 +119,8 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
                 isLive
                   ? "text-[var(--success)]"
                   : isPaused
-                  ? "text-[var(--warning)]"
-                  : "text-[var(--fg-3)]"
+                    ? "text-[var(--warning)]"
+                    : "text-[var(--fg-3)]"
               }
             >
               {auction?.status}
@@ -126,7 +154,6 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
               Resume
             </Button>
           )}
-
         </div>
       </header>
 
@@ -147,7 +174,10 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
       )}
 
       {err && (
-        <div className="text-[13px] rounded-lg p-3 border border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger)] animate-fade-down">
+        <div
+          role="alert"
+          className="text-[13px] rounded-lg p-3 border border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger)] animate-fade-down"
+        >
           {err}
         </div>
       )}
@@ -168,25 +198,34 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
                 Playing captain of {captainTeam.name}
               </div>
               <p className="text-[12px] text-[var(--fg-3)] mt-1">
-                Playing captains are reserved for Final allotment after Round 2.
+                Playing captains are automatically allotted when their category
+                is complete.
               </p>
             </div>
           )}
 
           <div className="flex flex-wrap gap-2">
             {!isCaptain && (
-            <>
-              <Button onClick={() => call("sell", "sell")}
-                loading={busy === "sell"} disabled={busy !== null || !highestBid || !isLive}>
-                <Check size={14} strokeWidth={2} />
-                Sell to {teams.find((t) => t.id === highestBid?.team_id)?.name ?? "…"}
-              </Button>
-              <Button variant="outline" onClick={() => call("undo-bid", "undo")}
-                loading={busy === "undo"} disabled={busy !== null || !highestBid}>
-                <Undo2 size={14} strokeWidth={2} /> Undo last bid
-              </Button>
-            </>
-          )}
+              <>
+                <Button
+                  onClick={() => call("sell", "sell")}
+                  loading={busy === "sell"}
+                  disabled={busy !== null || !highestBid || !isLive}
+                >
+                  <Check size={14} strokeWidth={2} />
+                  Sell to{" "}
+                  {teams.find((t) => t.id === highestBid?.team_id)?.name ?? "…"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => call("undo-bid", "undo")}
+                  loading={busy === "undo"}
+                  disabled={busy !== null || !highestBid}
+                >
+                  <Undo2 size={14} strokeWidth={2} /> Undo last bid
+                </Button>
+              </>
+            )}
             <Button
               variant="danger"
               onClick={() => call("unsold", "unsold")}
@@ -197,8 +236,18 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
               {isLegacyRoundTwo ? "Mark unsold" : "Unsold → Retry same player"}
             </Button>
             {isRetry && !isLegacyRoundTwo && (
-              <Button variant="outline" loading={busy === "skip"} disabled={busy !== null || !isLive}
-                onClick={() => call("skip-player", "skip", "Explicitly skip this unsold player and move to the next player in the same category? Main Controller authorization is required.")}>
+              <Button
+                variant="outline"
+                loading={busy === "skip"}
+                disabled={busy !== null || !isLive}
+                onClick={() =>
+                  call(
+                    "skip-player",
+                    "skip",
+                    "Explicitly skip this unsold player and move to the next player in the same category? Main Controller authorization is required.",
+                  )
+                }
+              >
                 Skip player (controller only)
               </Button>
             )}
@@ -210,8 +259,8 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
             {isLive
               ? "No player on the block. Pick a category below to draw one."
               : isPaused
-              ? "Auction is paused."
-              : "Waiting for auction to start."}
+                ? "Auction is paused."
+                : "Waiting for auction to start."}
           </CardBody>
         </Card>
       )}
@@ -219,7 +268,7 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
       {isLive && (
         <CategoryPicker
           counts={counts}
-          disabled={hasCurrent}
+          disabled={hasCurrent || busy !== null}
           onDraw={drawNext}
         />
       )}

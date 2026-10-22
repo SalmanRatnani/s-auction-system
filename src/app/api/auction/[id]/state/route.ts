@@ -24,7 +24,7 @@ type CurrentPlayer = {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
@@ -32,14 +32,24 @@ export async function GET(
     return NextResponse.json({ error: "Invalid auction ID" }, { status: 400 });
   }
   const userClient = await createClient();
-  const { data: { user } } = await userClient.auth.getUser();
+  const {
+    data: { user },
+  } = await userClient.auth.getUser();
   const token = request.nextUrl.searchParams.get("viewerToken");
   let isStaffOrCaptain = false;
   if (user) {
-    const { data: profile } = await userClient.from("users").select("role").eq("id", user.id).maybeSingle();
-    isStaffOrCaptain = !!profile && ["MAIN_CONTROLLER", "AUCTIONEER", "CAPTAIN", "VIEWER"].includes(profile.role);
+    const { data: profile } = await userClient
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    isStaffOrCaptain =
+      !!profile &&
+      ["MAIN_CONTROLLER", "AUCTIONEER", "CAPTAIN", "VIEWER"].includes(
+        profile.role,
+      );
   }
-  if (!isStaffOrCaptain && !(token && await validateViewerToken(token, id))) {
+  if (!isStaffOrCaptain && !(token && (await validateViewerToken(token, id)))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -47,32 +57,60 @@ export async function GET(
   // spectator and captain even when Realtime delivered a bid immediately.
   const admin = createAdminClient();
   const [
-    auctionResult, rawCurrentResult, pendingResult,
-    fullTeams, pursesResult, rostersResult, lastTpResult,
+    auctionResult,
+    rawCurrentResult,
+    pendingResult,
+    fullTeams,
+    pursesResult,
+    rostersResult,
+    lastTpResult,
   ] = await Promise.all([
     admin.from("auctions").select("*").eq("id", id).single(),
-    admin.from("auction_players").select(`
+    admin
+      .from("auction_players")
+      .select(
+        `
       id, status, round, sold_price, sold_to_team_id,
       player:players (
         id, player_code, name, grade, image_url,
         achievements, playing_centre, playing_hand
       )
-    `).eq("auction_id", id).eq("status", "CURRENT").maybeSingle(),
-    admin.from("auction_players").select("player_id, players!inner(grade)")
-      .eq("auction_id", id).eq("status", "PENDING"),
-    admin.from("teams")
-      .select("id, name, logo_url, captain_user_id, co_captain_user_id, captain_player_id, co_captain_player_id, initial_purse")
-      .eq("auction_id", id).order("created_at", { ascending: true }),
-    admin.from("team_purses").select("team_id, remaining_purse, spent, squad_count")
+    `,
+      )
+      .eq("auction_id", id)
+      .eq("status", "CURRENT")
+      .maybeSingle(),
+    admin
+      .from("auction_players")
+      .select("player_id, players!inner(grade)")
+      .eq("auction_id", id)
+      .eq("status", "PENDING"),
+    admin
+      .from("teams")
+      .select(
+        "id, name, logo_url, captain_user_id, co_captain_user_id, captain_player_id, co_captain_player_id, initial_purse",
+      )
+      .eq("auction_id", id)
+      .order("created_at", { ascending: true }),
+    admin
+      .from("team_purses")
+      .select("team_id, remaining_purse, spent, squad_count")
       .eq("auction_id", id),
-    admin.from("team_players").select(`team_id, player_id, player:players (grade)`)
+    admin
+      .from("team_players")
+      .select(`team_id, player_id, player:players (grade)`)
       .eq("auction_id", id),
-    admin.from("team_players").select(
-      `id, price, acquired_via, won_at,
+    admin
+      .from("team_players")
+      .select(
+        `id, price, acquired_via, won_at,
        player:players (name, grade, image_url),
-       team:teams (name)`
-    ).eq("auction_id", id).order("won_at", { ascending: false })
-      .limit(1).maybeSingle(),
+       team:teams (name)`,
+      )
+      .eq("auction_id", id)
+      .order("won_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
   const isAuthed = !!user;
   const { data: auction } = auctionResult;
@@ -88,7 +126,7 @@ export async function GET(
 
   // --- Current player on the block ---
   const currentPlayer = one<CurrentPlayer>(
-    rawCurrent?.player as CurrentPlayer | CurrentPlayer[] | null | undefined
+    rawCurrent?.player as CurrentPlayer | CurrentPlayer[] | null | undefined,
   );
 
   // --- Is the current player a team's playing captain? ---
@@ -98,7 +136,9 @@ export async function GET(
       .from("teams")
       .select("id, name")
       .eq("auction_id", id)
-      .or(`captain_player_id.eq.${currentPlayer.id},co_captain_player_id.eq.${currentPlayer.id}`)
+      .or(
+        `captain_player_id.eq.${currentPlayer.id},co_captain_player_id.eq.${currentPlayer.id}`,
+      )
       .limit(1)
       .maybeSingle();
     captainTeam = team ?? null;
@@ -131,27 +171,40 @@ export async function GET(
   // --- Pool counts by category ---
   // --- Teams ---
   const fallback = isMissingPartnerColumn(fullTeams.error)
-    ? await admin.from("teams")
-        .select("id, name, logo_url, captain_user_id, captain_player_id, initial_purse")
-        .eq("auction_id", id).order("created_at", { ascending: true })
+    ? await admin
+        .from("teams")
+        .select(
+          "id, name, logo_url, captain_user_id, captain_player_id, initial_purse",
+        )
+        .eq("auction_id", id)
+        .order("created_at", { ascending: true })
     : null;
   const teamsError = fallback?.error ?? (fallback ? null : fullTeams.error);
-  if (teamsError) return NextResponse.json({ error: teamsError.message }, { status: 500 });
+  if (teamsError)
+    return NextResponse.json({ error: teamsError.message }, { status: 500 });
   const teamsRaw = fallback
-    ? (fallback.data ?? []).map((team) => ({ ...team, co_captain_user_id: null, co_captain_player_id: null }))
-    : fullTeams.data ?? [];
+    ? (fallback.data ?? []).map((team) => ({
+        ...team,
+        co_captain_user_id: null,
+        co_captain_player_id: null,
+      }))
+    : (fullTeams.data ?? []);
 
   // Exclude both reserved playing-captain slots from round progression,
   // including older queues where a captain had already been seeded.
-  const reservedPlayerIds = new Set(teamsRaw.flatMap((t) =>
-    [t.captain_player_id, t.co_captain_player_id].filter((v): v is string => !!v)
-  ));
+  const reservedPlayerIds = new Set(
+    teamsRaw.flatMap((t) =>
+      [t.captain_player_id, t.co_captain_player_id].filter(
+        (v): v is string => !!v,
+      ),
+    ),
+  );
   const counts: Record<string, number> = {};
   CATEGORY_ORDER.forEach((grade) => (counts[grade] = 0));
   (pending ?? []).forEach((row) => {
     if (reservedPlayerIds.has(row.player_id)) return;
     const player = one<{ grade: string }>(
-      row.players as { grade: string } | { grade: string }[] | null
+      row.players as { grade: string } | { grade: string }[] | null,
     );
     if (player?.grade) counts[player.grade] = (counts[player.grade] ?? 0) + 1;
   });
@@ -173,30 +226,47 @@ export async function GET(
   const gradesByTeam: Record<string, string[]> = {};
   (rosters ?? []).forEach((r) => {
     const p = one<{ grade: string | null }>(
-      r.player as { grade: string | null } | { grade: string | null }[] | null
+      r.player as { grade: string | null } | { grade: string | null }[] | null,
     );
     if (!p?.grade) return;
     (gradesByTeam[r.team_id] ??= []).push(p.grade);
   });
 
-  const allottedPlayerIds = new Set((rosters ?? []).map((row) => row.player_id));
+  const allottedPlayerIds = new Set(
+    (rosters ?? []).map((row) => row.player_id),
+  );
 
   // Playing captains reserve their grades even before final allotment.
-  const captainIds = [...new Set(teamsRaw.flatMap((t) =>
-    [t.captain_player_id, t.co_captain_player_id].filter((v): v is string => !!v)
-  ))];
+  const captainIds = [
+    ...new Set(
+      teamsRaw.flatMap((t) =>
+        [t.captain_player_id, t.co_captain_player_id].filter(
+          (v): v is string => !!v,
+        ),
+      ),
+    ),
+  ];
   const { data: reservedPlayers, error: reservedError } = captainIds.length
     ? await admin.from("players").select("id, grade").in("id", captainIds)
     : { data: [] as { id: string; grade: string | null }[], error: null };
-  if (reservedError) return NextResponse.json({ error: reservedError.message }, { status: 500 });
-  const reservedGradeByPlayer = new Map((reservedPlayers ?? []).map((p) => [p.id, p.grade]));
+  if (reservedError)
+    return NextResponse.json({ error: reservedError.message }, { status: 500 });
+  const reservedGradeByPlayer = new Map(
+    (reservedPlayers ?? []).map((p) => [p.id, p.grade]),
+  );
   const reservedGradesByTeam: Record<string, string[]> = {};
   teamsRaw.forEach((t) => {
-    reservedGradesByTeam[t.id] = [...new Set(
-      [t.captain_player_id, t.co_captain_player_id]
-        .map((id) => id && !allottedPlayerIds.has(id) ? reservedGradeByPlayer.get(id) : null)
-        .filter((grade): grade is string => !!grade)
-    )];
+    reservedGradesByTeam[t.id] = [
+      ...new Set(
+        [t.captain_player_id, t.co_captain_player_id]
+          .map((id) =>
+            id && !allottedPlayerIds.has(id)
+              ? reservedGradeByPlayer.get(id)
+              : null,
+          )
+          .filter((grade): grade is string => !!grade),
+      ),
+    ];
   });
 
   // --- Most recent sale (drives the SOLD celebration on every screen) ---
@@ -212,14 +282,18 @@ export async function GET(
   } | null = null;
 
   if (lastTp) {
-    const lp = one<{ name: string; grade: string | null; image_url: string | null }>(
+    const lp = one<{
+      name: string;
+      grade: string | null;
+      image_url: string | null;
+    }>(
       lastTp.player as
         | { name: string; grade: string | null; image_url: string | null }
         | { name: string; grade: string | null; image_url: string | null }[]
-        | null
+        | null,
     );
     const lt = one<{ name: string }>(
-      lastTp.team as { name: string } | { name: string }[] | null
+      lastTp.team as { name: string } | { name: string }[] | null,
     );
     if (lp && lt) {
       lastSale = {
@@ -243,26 +317,37 @@ export async function GET(
       id: t.id,
       name: t.name,
       logo_url: t.logo_url,
-      captain_user_id: t.captain_user_id,
-      co_captain_user_id: t.co_captain_user_id,
+      captain_user_id: isAuthed ? t.captain_user_id : null,
+      co_captain_user_id: isAuthed ? t.co_captain_user_id : null,
       initial_purse: isAuthed ? t.initial_purse : 0,
       remaining_purse: isAuthed
-        ? purse?.remaining_purse ?? t.initial_purse
+        ? (purse?.remaining_purse ?? t.initial_purse)
         : 0,
-      spent: isAuthed ? purse?.spent ?? 0 : 0,
+      spent: isAuthed ? (purse?.spent ?? 0) : 0,
       squad_count: purse?.squad_count ?? 0,
       won_grades: gradesByTeam[t.id] ?? [],
       reserved_grades: reservedGradesByTeam[t.id] ?? [],
-      reserved_slots: [t.captain_player_id, t.co_captain_player_id].filter((playerId) => playerId && !allottedPlayerIds.has(playerId)).length,
+      reserved_slots: [t.captain_player_id, t.co_captain_player_id].filter(
+        (playerId) => playerId && !allottedPlayerIds.has(playerId),
+      ).length,
     };
   });
 
-  return NextResponse.json({
-    auction: { id: auction.id, name: auction.name, status: auction.status, mode: auction.mode, config: auction.config },
-    current,
-    highestBid,
-    counts,
-    lastSale,
-    teams,
-  }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
+  return NextResponse.json(
+    {
+      auction: {
+        id: auction.id,
+        name: auction.name,
+        status: auction.status,
+        mode: auction.mode,
+        config: auction.config,
+      },
+      current,
+      highestBid,
+      counts,
+      lastSale,
+      teams,
+    },
+    { headers: { "Cache-Control": "private, no-store, max-age=0" } },
+  );
 }

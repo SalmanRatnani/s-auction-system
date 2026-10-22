@@ -13,27 +13,39 @@ const variants: Record<Variant, string> = {
     "bg-transparent text-[var(--fg-2)] hover:bg-[var(--bg-2)] hover:text-[var(--fg-1)]",
   outline:
     "bg-transparent border border-[var(--line-2)] text-[var(--fg-1)] hover:bg-[var(--bg-2)] hover:border-[var(--line-3)]",
-  danger:
-    "bg-[var(--danger)] text-white font-medium hover:opacity-90",
+  danger: "bg-[var(--danger)] text-white font-medium hover:opacity-90",
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-8 px-3 text-[13px] rounded-md gap-1.5",
-  md: "h-9 px-3.5 text-sm rounded-lg gap-2",
-  lg: "h-11 px-5 text-sm rounded-lg gap-2",
+  sm: "min-h-10 px-3 text-[13px] rounded-md gap-1.5",
+  md: "min-h-11 px-3.5 text-sm rounded-lg gap-2",
+  lg: "min-h-12 px-5 text-sm rounded-lg gap-2",
 };
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
   loading?: boolean;
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "primary", size = "md", loading, disabled, children, ...props }, ref) => (
+  (
+    {
+      className,
+      variant = "primary",
+      size = "md",
+      loading,
+      disabled,
+      children,
+      ...props
+    },
+    ref,
+  ) => (
     <button
       ref={ref}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={cn(
         "inline-flex items-center justify-center font-medium",
         "transition-[background-color,border-color,color,opacity,transform] duration-150 active:scale-[0.97]",
@@ -41,7 +53,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         "focus:outline-none focus-visible:shadow-[0_0_0_2px_var(--bg-0),0_0_0_4px_var(--accent-line)]",
         variants[variant],
         sizes[size],
-        className
+        className,
       )}
       {...props}
     >
@@ -50,6 +62,6 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       )}
       {children}
     </button>
-  )
+  ),
 );
 Button.displayName = "Button";

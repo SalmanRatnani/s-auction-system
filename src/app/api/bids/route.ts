@@ -7,13 +7,27 @@ export async function POST(request: NextRequest) {
     amount?: number;
   };
 
-  if (typeof body.auctionPlayerId !== "string" || !/^[0-9a-f-]{36}$/i.test(body.auctionPlayerId) || !Number.isSafeInteger(body.amount) || (body.amount ?? 0) <= 0) {
-    return NextResponse.json({ error: "Missing auctionPlayerId or amount" }, { status: 400 });
+  if (
+    !body ||
+    typeof body !== "object" ||
+    Array.isArray(body) ||
+    typeof body.auctionPlayerId !== "string" ||
+    !/^[0-9a-f-]{36}$/i.test(body.auctionPlayerId) ||
+    !Number.isSafeInteger(body.amount) ||
+    (body.amount ?? 0) <= 0
+  ) {
+    return NextResponse.json(
+      { error: "Missing auctionPlayerId or amount" },
+      { status: 400 },
+    );
   }
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data, error } = await supabase.rpc("place_bid", {
     p_auction_player_id: body.auctionPlayerId,
@@ -21,10 +35,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
   return NextResponse.json({ ok: true, bid: data });

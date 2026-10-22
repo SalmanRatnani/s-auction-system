@@ -1,8 +1,8 @@
 "use client";
 
+import { TeamLogo } from "@/components/branding/TeamLogo";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,46 +21,65 @@ export function TeamEditor({ team }: { team: Team }) {
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(
-    null
+    null,
   );
 
   async function saveName() {
+    if (busy) return;
     setBusy(true);
     setMsg(null);
-    const res = await fetch(`/api/teams/${team.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim() }),
-    });
-    setBusy(false);
-    if (!res.ok) {
-      const b = await res.json().catch(() => ({}));
-      setMsg({ kind: "err", text: b.error ?? "Failed" });
-      return;
+    try {
+      const res = await fetch(`/api/teams/${team.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() }),
+      });
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        setMsg({ kind: "err", text: b.error ?? "Failed" });
+        return;
+      }
+      setMsg({ kind: "ok", text: "Team name saved." });
+      router.refresh();
+    } catch {
+      setMsg({
+        kind: "err",
+        text: "Connection interrupted. Please try again.",
+      });
+    } finally {
+      setBusy(false);
     }
-    setMsg({ kind: "ok", text: "Team name saved." });
-    router.refresh();
   }
 
   async function uploadLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    const input = e.currentTarget;
+    if (!file || uploading) return;
     setUploading(true);
     setMsg(null);
-    const fd = new FormData();
-    fd.append("logo", file);
-    const res = await fetch(`/api/teams/${team.id}/logo`, {
-      method: "POST",
-      body: fd,
-    });
-    setUploading(false);
-    if (!res.ok) {
-      const b = await res.json().catch(() => ({}));
-      setMsg({ kind: "err", text: b.error ?? "Upload failed" });
-      return;
+    try {
+      const fd = new FormData();
+      fd.append("logo", file);
+      const res = await fetch(`/api/teams/${team.id}/logo`, {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        setMsg({ kind: "err", text: b.error ?? "Upload failed" });
+        return;
+      }
+      setMsg({ kind: "ok", text: "Logo uploaded." });
+      router.refresh();
+    } catch {
+      setMsg({
+        kind: "err",
+        text: "Connection interrupted. Your logo could not be uploaded.",
+      });
+    } finally {
+      setUploading(false);
+      input.value = "";
     }
-    setMsg({ kind: "ok", text: "Logo uploaded." });
-    router.refresh();
   }
 
   return (
@@ -70,27 +89,25 @@ export function TeamEditor({ team }: { team: Team }) {
       </CardHeader>
       <CardBody className="space-y-5">
         <div className="flex items-center gap-4">
-          {team.logo_url ? (
-            <img
-              src={team.logo_url}
-              alt=""
-              className="h-16 w-16 rounded-lg object-cover border border-[var(--line-1)]"
-            />
-          ) : (
-            <div className="h-16 w-16 rounded-lg bg-[var(--bg-2)] border border-[var(--line-1)] grid place-items-center text-[var(--fg-4)]">
-              <ImagePlus size={20} strokeWidth={1.5} />
-            </div>
-          )}
-          <div className="flex-1">
-            <label className="block text-[11px] uppercase tracking-[0.08em] text-[var(--fg-4)] mb-1.5">
+          <TeamLogo
+            name={team.name}
+            src={team.logo_url}
+            className="!w-12 !h-12 mx-auto"
+          />
+          <div className="flex-1 min-w-0">
+            <label
+              htmlFor="team-logo"
+              className="block text-[11px] uppercase tracking-[0.08em] text-[var(--fg-4)] mb-1.5"
+            >
               Team logo
             </label>
             <input
+              id="team-logo"
               type="file"
               accept="image/png,image/jpeg,image/webp"
               onChange={uploadLogo}
               disabled={uploading}
-              className="text-[12px] text-[var(--fg-3)] file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-[var(--bg-2)] file:text-[var(--fg-1)] file:text-[12px] hover:file:bg-[var(--bg-3)]"
+              className="max-w-full text-[12px] text-[var(--fg-3)] file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-[var(--bg-2)] file:text-[var(--fg-1)] file:text-[12px] hover:file:bg-[var(--bg-3)]"
             />
             <p className="text-[10px] text-[var(--fg-4)] mt-1">
               PNG / JPEG / WebP · max 2 MB
@@ -99,11 +116,15 @@ export function TeamEditor({ team }: { team: Team }) {
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-[11px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
+          <label
+            htmlFor="team-name"
+            className="block text-[11px] uppercase tracking-[0.08em] text-[var(--fg-4)]"
+          >
             Team name
           </label>
           <div className="flex gap-2">
             <Input
+              id="team-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={40}
@@ -125,6 +146,7 @@ export function TeamEditor({ team }: { team: Team }) {
 
         {msg && (
           <div
+            role={msg.kind === "err" ? "alert" : "status"}
             className={`text-[13px] rounded-lg p-3 border ${
               msg.kind === "err"
                 ? "border-[var(--danger-line)] bg-[var(--danger-bg)] text-[var(--danger)]"

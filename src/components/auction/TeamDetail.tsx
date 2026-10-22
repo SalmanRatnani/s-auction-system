@@ -1,3 +1,4 @@
+import { TeamLogo } from "@/components/branding/TeamLogo";
 import Link from "next/link";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -52,17 +53,11 @@ export function TeamDetail({
       </Link>
 
       <header className="flex items-center gap-5">
-        {team.logo_url ? (
-          <img
-            src={team.logo_url}
-            alt=""
-            className="h-16 w-16 md:h-20 md:w-20 rounded-xl object-cover border border-[var(--line-1)]"
-          />
-        ) : (
-          <div className="h-16 w-16 md:h-20 md:w-20 rounded-xl bg-[var(--bg-2)] border border-[var(--line-1)] grid place-items-center text-[13px] font-mono text-[var(--fg-4)]">
-            {team.name.slice(0, 2).toUpperCase()}
-          </div>
-        )}
+        <TeamLogo
+          name={team.name}
+          src={team.logo_url}
+          className="!w-12 !h-12 mx-auto"
+        />
         <div className="flex-1 min-w-0">
           <h1 className="text-[24px] md:text-[28px] font-semibold tracking-tight truncate">
             {team.name}
@@ -70,9 +65,7 @@ export function TeamDetail({
           {team.captain_display && (
             <p className="text-[13px] text-[var(--fg-3)] mt-1">
               Captain:{" "}
-              <span className="text-[var(--fg-1)]">
-                {team.captain_display}
-              </span>
+              <span className="text-[var(--fg-1)]">{team.captain_display}</span>
             </p>
           )}
           <p className="text-[11px] text-[var(--fg-4)] tnum mt-0.5">
@@ -161,10 +154,7 @@ export function TeamDetail({
                 );
 
                 return playerLinkBase ? (
-                  <Link
-                    key={r.id}
-                    href={`${playerLinkBase}/${r.player.id}`}
-                  >
+                  <Link key={r.id} href={`${playerLinkBase}/${r.player.id}`}>
                     {inner}
                   </Link>
                 ) : (

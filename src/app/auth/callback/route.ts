@@ -1,3 +1,4 @@
+import { safeRedirectPath } from "@/lib/security/request";
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
@@ -36,20 +37,18 @@ export async function GET(request: NextRequest) {
           });
         },
       },
-    }
+    },
   );
 
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    return NextResponse.redirect(
-      `${origin}/login?error=${encodeURIComponent(error.message)}`
-    );
+    return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`);
   }
 
   const role = (data.user?.app_metadata?.role as string) ?? "VIEWER";
   const home = ROLE_HOME[role] ?? "/dashboard";
-  const target = next && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next : home;
+  const target = safeRedirectPath(next, home);
 
   // Mutate the SAME response — cookies already attached.
   response.headers.set("Location", `${origin}${target}`);

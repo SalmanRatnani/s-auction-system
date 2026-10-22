@@ -1,5 +1,6 @@
 "use client";
 
+import { TeamLogo } from "@/components/branding/TeamLogo";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, Check, ImagePlus } from "lucide-react";
@@ -54,8 +55,12 @@ export function TeamCard({
   const captain = users.find((u) => u.id === team.captain_user_id);
   const nameChanged = name.trim() !== team.name;
   const captainOptions = players.filter((p) => !takenPlayerIds.includes(p.id));
-  const firstCaptainGrade = players.find((p) => p.id === team.captain_player_id)?.grade;
-  const secondCaptainGrade = players.find((p) => p.id === team.co_captain_player_id)?.grade;
+  const firstCaptainGrade = players.find(
+    (p) => p.id === team.captain_player_id,
+  )?.grade;
+  const secondCaptainGrade = players.find(
+    (p) => p.id === team.co_captain_player_id,
+  )?.grade;
 
   const avatarLabel = captain
     ? (captain.display_name ?? captain.email).slice(0, 1).toUpperCase()
@@ -80,26 +85,30 @@ export function TeamCard({
 
   async function uploadLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || uploading) return;
     setUploading(true);
     setErr(null);
+    try {
+      const fd = new FormData();
+      fd.append("logo", file);
 
-    const fd = new FormData();
-    fd.append("logo", file);
+      const res = await fetch(`/api/teams/${team.id}/logo`, {
+        method: "POST",
+        body: fd,
+      });
 
-    const res = await fetch(`/api/teams/${team.id}/logo`, {
-      method: "POST",
-      body: fd,
-    });
-    setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-
-    if (!res.ok) {
-      const b = await res.json().catch(() => ({}));
-      setErr(b.error ?? "Upload failed");
-      return;
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        setErr(b.error ?? "Upload failed");
+        return;
+      }
+      router.refresh();
+    } catch {
+      setErr("Connection interrupted. Your logo could not be uploaded.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
-    router.refresh();
   }
 
   async function remove() {
@@ -125,19 +134,20 @@ export function TeamCard({
             onClick={() => !uploading && fileInputRef.current?.click()}
             title="Upload team logo"
             role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (!uploading && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
             aria-label="Upload team logo"
           >
-            {team.logo_url ? (
-              <img
-                src={team.logo_url}
-                alt=""
-                className="h-10 w-10 rounded-md object-cover border border-[var(--line-1)]"
-              />
-            ) : (
-              <div className="h-10 w-10 rounded-md bg-[var(--bg-2)] border border-[var(--line-1)] grid place-items-center text-[13px] font-semibold text-[var(--fg-2)]">
-                {avatarLabel}
-              </div>
-            )}
+            <TeamLogo
+              name={team.name}
+              src={team.logo_url}
+              className="!w-12 !h-12 mx-auto"
+            />
 
             <div className="absolute inset-0 bg-black/60 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               {uploading ? (
@@ -198,25 +208,37 @@ export function TeamCard({
             </p>
           )}
           <p className="text-[10px] text-[var(--fg-4)]">
-            Login accounts only. Registered players are selected under Playing Captain below.
+            Login accounts only. Registered players are selected under Playing
+            Captain below.
           </p>
         </div>
 
         {/* Second captain login — shares the same purse and roster */}
         <div className="space-y-1.5">
-          <label className="block text-[10px] uppercase tracking-[0.08em] text-[var(--fg-4)]">Partner Captain Login (Optional)</label>
+          <label className="block text-[10px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
+            Partner Captain Login (Optional)
+          </label>
           <select
             value={team.co_captain_user_id ?? ""}
             disabled={busy || uploading}
-            onChange={(e) => patch({ co_captain_user_id: e.target.value || null })}
+            onChange={(e) =>
+              patch({ co_captain_user_id: e.target.value || null })
+            }
             className="h-9 w-full rounded-md bg-[var(--bg-1)] border border-[var(--line-1)] px-2.5 text-[12px] text-[var(--fg-1)] focus:outline-none focus:border-[var(--accent-line)]"
           >
             <option value="">— no partner —</option>
-            {users.filter((u) => u.id !== team.captain_user_id).map((u) => (
-              <option key={u.id} value={u.id}>{u.display_name ?? u.email}</option>
-            ))}
+            {users
+              .filter((u) => u.id !== team.captain_user_id)
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.display_name ?? u.email}
+                </option>
+              ))}
           </select>
-          <p className="text-[10px] text-[var(--fg-4)]">Both captains can bid and manage this team. They share the same purse and roster.</p>
+          <p className="text-[10px] text-[var(--fg-4)]">
+            Both captains can bid and manage this team. They share the same
+            purse and roster.
+          </p>
         </div>
 
         {/* Playing Captain (Player) */}
@@ -227,15 +249,23 @@ export function TeamCard({
           <select
             value={team.captain_player_id ?? ""}
             disabled={busy || uploading}
-            onChange={(e) => patch({ captain_player_id: e.target.value || null })}
+            onChange={(e) =>
+              patch({ captain_player_id: e.target.value || null })
+            }
             className="h-9 w-full rounded-md bg-[var(--bg-1)] border border-[var(--line-1)] px-2.5 text-[12px] text-[var(--fg-1)] focus:outline-none focus:border-[var(--accent-line)]"
           >
             <option value="">— none —</option>
-            {captainOptions.filter((p) => p.id !== team.co_captain_player_id && p.grade !== secondCaptainGrade).map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.grade})
-              </option>
-            ))}
+            {captainOptions
+              .filter(
+                (p) =>
+                  p.id !== team.co_captain_player_id &&
+                  p.grade !== secondCaptainGrade,
+              )
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.grade})
+                </option>
+              ))}
           </select>
           <p className="text-[10px] text-[var(--fg-4)]">
             This registered player is reserved now and automatically allotted
@@ -252,15 +282,29 @@ export function TeamCard({
           <select
             value={team.co_captain_player_id ?? ""}
             disabled={busy || uploading}
-            onChange={(e) => patch({ co_captain_player_id: e.target.value || null })}
+            onChange={(e) =>
+              patch({ co_captain_player_id: e.target.value || null })
+            }
             className="h-9 w-full rounded-md bg-[var(--bg-1)] border border-[var(--line-1)] px-2.5 text-[12px] text-[var(--fg-1)] focus:outline-none focus:border-[var(--accent-line)]"
           >
             <option value="">— none —</option>
-            {captainOptions.filter((p) => p.id !== team.captain_player_id && p.grade !== firstCaptainGrade).map((p) => (
-              <option key={p.id} value={p.id}>{p.name} ({p.grade})</option>
-            ))}
+            {captainOptions
+              .filter(
+                (p) =>
+                  p.id !== team.captain_player_id &&
+                  p.grade !== firstCaptainGrade,
+              )
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.grade})
+                </option>
+              ))}
           </select>
-          <p className="text-[10px] text-[var(--fg-4)]">A second registered player, from a different category, automatically allotted at that category's end. Both captains share the same purse and roster.</p>
+          <p className="text-[10px] text-[var(--fg-4)]">
+            A second registered player, from a different category, automatically
+            allotted at that category's end. Both captains share the same purse
+            and roster.
+          </p>
         </div>
 
         {/* Team name */}
@@ -279,7 +323,9 @@ export function TeamCard({
             <Button
               size="sm"
               variant={nameChanged ? "primary" : "ghost"}
-              disabled={busy || uploading || !nameChanged || name.trim().length < 2}
+              disabled={
+                busy || uploading || !nameChanged || name.trim().length < 2
+              }
               onClick={() => patch({ name: name.trim() })}
               className="px-2.5 shrink-0"
               title="Save name"

@@ -4,6 +4,8 @@ import { RoleBadge } from "@/components/layout/RoleBadge";
 import { SoundToggle } from "@/components/layout/SoundToggle";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { MobileNav } from "@/components/layout/MobileNav";
+import { usePathname } from "next/navigation";
+import { NAV } from "./navigation";
 import type { Role } from "@/types/roles";
 
 export function Topbar({
@@ -15,10 +17,21 @@ export function Topbar({
   displayName: string;
   email: string;
 }) {
+  const pathname = usePathname();
+  const page =
+    (NAV[role] ?? NAV.VIEWER).find(
+      (item) => pathname === item.href || pathname.startsWith(item.href + "/"),
+    )?.label ?? "Workspace";
   return (
-    <header className="h-14 flex items-center justify-between border-b border-[var(--line-1)] bg-[var(--bg-0)] px-3 md:px-6">
+    <header className="app-topbar">
       <div className="flex items-center gap-2">
         <MobileNav role={role} displayName={displayName} />
+        <div className="hidden sm:block mr-4">
+          <span className="text-[10px] text-[var(--fg-4)] block mb-1">
+            WORKSPACE /
+          </span>
+          <span className="text-[13px] font-medium">{page}</span>
+        </div>
         <RoleBadge role={role} />
       </div>
       <div className="flex items-center gap-2">
