@@ -41,3 +41,15 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/0017_finalize_playing_captains.sql
       - name: Exercise auction lifecycle
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/auction-flow.sql
+
+      - name: Verify virtual-credit rules in a fresh database
+        run: |
+          createdb virtual_credit_test
+          export PGDATABASE=virtual_credit_test
+          psql -v ON_ERROR_STOP=1 -f tests/sql/fixture.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0015_team_captain_partnerships.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0016_dual_playing_captain_slots.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0017_finalize_playing_captains.sql
+          psql -v ON_ERROR_STOP=1 -c "CREATE FUNCTION public.close_completed_captain_grades(uuid,text) RETURNS jsonb LANGUAGE sql AS 'SELECT ''{}''::jsonb';"
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0025_virtual_bids_atomic_draw.sql
+          psql -v ON_ERROR_STOP=1 -f tests/sql/virtual-credits.sql
