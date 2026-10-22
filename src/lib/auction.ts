@@ -1,5 +1,6 @@
 // src/lib/auction.ts
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type Auction = {
   id: string;
@@ -28,7 +29,12 @@ export async function getOrCreateDraftAuction(): Promise<Auction | null> {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: created, error } = await supabase
+  if (!user) return null;
+  const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
+  if (profile?.role !== "MAIN_CONTROLLER") return null;
+
+  // Client-side INSERT is intentionally revoked by migration 0024.
+  const { data: created, error } = await createAdminClient()
     .from("auctions")
     .insert({
       name: `S Auction ${new Date().getFullYear()}`,
