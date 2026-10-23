@@ -12,8 +12,11 @@ import {
   Zap,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { Logo, BrandMark } from "@/components/branding/Logo";
+import { Logo } from "@/components/branding/Logo";
+import { BrandSculpture } from "@/components/branding/BrandSculpture";
 import { AuctionPreview } from "@/components/landing/AuctionPreview";
+import { Reveal } from "@/components/landing/Reveal";
+import { ArenaScene } from "@/components/three/ArenaScene";
 
 const features = [
   {
@@ -52,7 +55,7 @@ export default async function Home() {
     if (user) redirect("/dashboard");
   }
   return (
-    <div className="marketing-page">
+    <Reveal className="marketing-page">
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
@@ -105,10 +108,10 @@ export default async function Home() {
             </div>
           </div>
           <div className="hero-preview-wrap">
-            <div className="hero-orbit" aria-hidden="true" />
             <div className="hero-side-label" aria-hidden="true">
               PRECISION / PASSION / POSSIBILITIES
             </div>
+            <ArenaScene />
             <AuctionPreview />
             <div className="hero-caption">
               <span>01 — THE LIVE EXPERIENCE</span>
@@ -130,7 +133,7 @@ export default async function Home() {
           id="experience"
           className="marketing-container marketing-section"
         >
-          <div className="section-intro">
+          <div className="section-intro" data-reveal>
             <div>
               <span className="marketing-eyebrow">
                 THE COMPLETE AUCTION EXPERIENCE
@@ -147,21 +150,30 @@ export default async function Home() {
             </p>
           </div>
           <div className="feature-grid">
-            {features.map(({ icon: Icon, number, title, description }) => (
-              <article className="marketing-feature" key={number}>
-                <div className="feature-top">
-                  <Icon size={27} strokeWidth={1.6} />
-                  <span>{number} /</span>
-                </div>
-                <h3>{title}</h3>
-                <p>{description}</p>
-              </article>
-            ))}
+            {features.map(
+              ({ icon: Icon, number, title, description }, index) => (
+                <article
+                  className="marketing-feature"
+                  key={number}
+                  data-reveal
+                  data-reveal-delay={index * 70}
+                >
+                  <div className="feature-top">
+                    <div className="feature-icon-sculpture" aria-hidden="true">
+                      <Icon size={27} strokeWidth={1.6} />
+                    </div>
+                    <span>{number} /</span>
+                  </div>
+                  <h3>{title}</h3>
+                  <p>{description}</p>
+                </article>
+              ),
+            )}
           </div>
         </section>
         <section id="how-it-works" className="marketing-workflow">
           <div className="marketing-container workflow-grid">
-            <div>
+            <div data-reveal>
               <span className="marketing-eyebrow">FROM SETUP TO SOLD</span>
               <h2>
                 All the action.
@@ -191,7 +203,7 @@ export default async function Home() {
                   desc: "Draw players, follow the bids and confirm sales. Team rosters and purses update together.",
                 },
               ].map((s, i) => (
-                <li key={s.title}>
+                <li key={s.title} data-reveal data-reveal-delay={i * 70}>
                   <span>0{i + 1}</span>
                   <div>
                     <h3>{s.title}</h3>
@@ -204,7 +216,7 @@ export default async function Home() {
           </div>
         </section>
         <section id="roles" className="marketing-container marketing-section">
-          <div className="section-intro">
+          <div className="section-intro" data-reveal>
             <div>
               <span className="marketing-eyebrow">A PLACE FOR EVERY ROLE</span>
               <h2>
@@ -240,9 +252,14 @@ export default async function Home() {
                 title: "Spectators",
                 text: "Watch every moment unfold from a live link or the venue screen.",
               },
-            ].map(({ icon: Icon, title, text }) => (
-              <article key={title}>
-                <Icon size={25} strokeWidth={1.6} />
+            ].map(({ icon: Icon, title, text }, index) => (
+              <article key={title} data-reveal data-reveal-delay={index * 60}>
+                <div
+                  className="feature-icon-sculpture role-icon-sculpture"
+                  aria-hidden="true"
+                >
+                  <Icon size={25} strokeWidth={1.6} />
+                </div>
                 <h3>{title}</h3>
                 <p>{text}</p>
               </article>
@@ -250,8 +267,8 @@ export default async function Home() {
           </div>
         </section>
         <section className="marketing-container">
-          <div className="marketing-final">
-            <BrandMark className="h-14 w-14" />
+          <div className="marketing-final" data-reveal>
+            <BrandSculpture />
             <span className="marketing-eyebrow">THE TEAM STARTS HERE</span>
             <h2>
               Make your next
@@ -274,6 +291,6 @@ export default async function Home() {
           </Link>
         </div>
       </footer>
-    </div>
+    </Reveal>
   );
 }

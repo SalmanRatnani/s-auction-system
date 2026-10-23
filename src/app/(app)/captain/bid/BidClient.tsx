@@ -335,7 +335,7 @@ export function BidClient({
           {showCustom && !cannotBid && (
             <form
               id="custom-bid-form"
-              className="flex items-end gap-3 rounded-xl border border-[var(--line-2)] bg-[var(--bg-1)] p-4"
+              className="motion-panel flex items-end gap-3 rounded-xl border border-[var(--line-2)] bg-[var(--bg-1)] p-4"
               onSubmit={(e) => {
                 e.preventDefault();
                 void placeBid(Math.round(Number(customAmount) * 100));

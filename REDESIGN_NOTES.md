@@ -12,6 +12,29 @@ This update gives the existing auction system a navy, lime and off-white visual 
 - Inline custom bids, purse-aware bid controls, duplicate-submit guards and recoverable connection errors. Existing server/database validation remains authoritative.
 - Self-hosted Inter fonts with their SIL Open Font License in `public/fonts/OFL.txt`.
 
+## Motion and interaction polish
+
+- Coordinated hero and illustration entrances, one-time scroll reveals, animated navigation underlines and restrained button/arrow feedback. Scroll content is visible without JavaScript; already-visible content is not hidden after hydration.
+- Short workspace route transitions preserve the child tree and do not replay when realtime auction data updates. Dashboard cards enter in a brief sequence; player changes and incoming bids have distinct visual cues.
+- Bid and purse values render their exact new value immediately, with a brief highlight. Monetary figures never count through intermediate amounts.
+- The demo has a sliding perspective selector with arrow-key/Home/End navigation, an associated tab panel, clear action feedback, sale confirmation and a virtual purse limit.
+- The native mobile dialog animates in and out on browsers supporting discrete transitions, with an immediate-close fallback. Focus trapping, Escape, focus restoration and existing body overflow are preserved.
+- Sales use a dismissible, non-modal celebration with finite confetti and Escape dismissal. The rest of the workspace remains interactive.
+- CSS and Web Animations honor reduced motion, including preference changes during a running animation. Focus cancels decorative reveals.
+
+## 3D design
+
+- The public homepage features a procedural Three.js badminton racket and feathered shuttle above a raised miniature court, with soft shadows, slow floating motion and restrained mouse parallax. Models and materials are generated locally; there are no external model or texture downloads.
+- The renderer is imported only when the scene enters the viewport. Rendering is capped at 30 frames per second and 1.5 device-pixel ratio, pauses off-screen and in hidden tabs, and releases its GPU resources on unmount. A visible Play/Pause button gives users control; reduced-motion preferences produce a still frame and disable parallax.
+- A server-rendered SVG illustration remains visible before initialization, with JavaScript disabled, or if WebGL initialization/context fails. The canvas reserves its height and never intercepts touch gestures.
+- The sample auction card has a compact layout with layered shadows. It retains local-only demo bidding, reset, exact amounts and live announcements. Feature and role icons have dimensional surfaces with gentle hover responses, and the closing call to action and sign-in page use a lightweight CSS sculpture of the S monogram.
+- Three.js is isolated to the public hero's lazy module. Authentication and auction screens do not load the WebGL renderer. The existing authorization and bidding rules are unchanged.
+- Focusing the homepage permanently completes its hero entrances, so moving focus away from a bid or reset button cannot replay the whole card's entrance.
+
+Desktop browser review with WebGL disabled (the SVG fallback is shown):
+
+![Homepage with the static badminton scene](docs/previews/3d-homepage-fallback.jpg)
+
 ## Security changes
 
 - Block cross-origin browser writes at the API boundary; routes retain their own authentication, authorization or webhook signature checks.
@@ -20,7 +43,7 @@ This update gives the existing auction system a navy, lime and off-white visual 
 - Require a controller or the team's currently authorized captain role for logo uploads. Verify raster signatures, decode only still JPEG/PNG/WebP images, cap size/pixels and re-encode to a metadata-free WebP with a unique storage path. Remove a new upload if saving its database reference fails.
 - Remove internal captain account IDs from unauthenticated spectator snapshots.
 - Add response headers for framing, MIME sniffing, referrers and browser permissions, plus production HSTS and private API caching. The CSP is a baseline for objects, base URLs and framing; it is not a comprehensive script policy.
-- Update Next.js to 16.3.8, sharp to 0.35.5 and the affected transitive source-map dependency. Production dependency audit reported zero known vulnerabilities during validation on 22 October 2026.
+- Update Next.js and its ESLint configuration to 16.4.3, retaining sharp 0.35.5 and the patched transitive source-map dependency. The framework update addresses the dependency audit findings for [image optimization](https://github.com/vercel/next.js/security/advisories/GHSA-2464-fhr4-w9xw), [Server Actions](https://github.com/vercel/next.js/security/advisories/GHSA-p3m5-59mp-jv5r) and [typed arrays in cached functions](https://github.com/vercel/next.js/security/advisories/GHSA-673q-mjm6-r5xr). These advisories were flagged during the motion update's CI run on 23 October 2026.
 
 ## Verification and release
 
@@ -35,6 +58,8 @@ npm run build
 ```
 
 The eight Node tests cover the existing CSV/signature/identifier helpers and the added origin, redirect, streamed-body and image validation protections. The quality workflow also builds the application.
+
+For the 3D hero, check Play/Pause, changing reduced-motion preferences, scrolling off-screen, switching tabs and navigating away on a WebGL-enabled desktop and phone. Also check the static illustration with WebGL disabled. A successful build verifies the code and bundle, but does not verify GPU rendering or device frame rates.
 
 Public product pages and the demo can be previewed without database credentials. Authenticated functionality requires the existing Supabase environment variables and migrations. No database migrations or production records are changed by this update.
 
