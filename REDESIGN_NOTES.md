@@ -30,7 +30,7 @@ This update gives the existing auction system a navy, lime and off-white visual 
 - Require a controller or the team's currently authorized captain role for logo uploads. Verify raster signatures, decode only still JPEG/PNG/WebP images, cap size/pixels and re-encode to a metadata-free WebP with a unique storage path. Remove a new upload if saving its database reference fails.
 - Remove internal captain account IDs from unauthenticated spectator snapshots.
 - Add response headers for framing, MIME sniffing, referrers and browser permissions, plus production HSTS and private API caching. The CSP is a baseline for objects, base URLs and framing; it is not a comprehensive script policy.
-- Update Next.js to 16.3.8, sharp to 0.35.5 and the affected transitive source-map dependency. Production dependency audit reported zero known vulnerabilities during validation on 22 October 2026.
+- Update Next.js and its ESLint configuration to 16.4.3, retaining sharp 0.35.5 and the patched transitive source-map dependency. The framework update addresses the dependency audit findings for [image optimization](https://github.com/vercel/next.js/security/advisories/GHSA-2464-fhr4-w9xw), [Server Actions](https://github.com/vercel/next.js/security/advisories/GHSA-p3m5-59mp-jv5r) and [typed arrays in cached functions](https://github.com/vercel/next.js/security/advisories/GHSA-673q-mjm6-r5xr). These advisories were flagged during the motion update's CI run on 23 October 2026.
 
 ## Verification and release
 
