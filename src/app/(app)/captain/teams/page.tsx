@@ -1,3 +1,4 @@
+import { TeamLogo } from "@/components/branding/TeamLogo";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { RoleGuard } from "@/components/guards/RoleGuard";
@@ -45,10 +46,12 @@ async function Inner() {
 
   const { data: rosters } = await supabase
     .from("team_players")
-    .select(`
+    .select(
+      `
       team_id, price, won_at,
       player:players (id, player_code, name, grade, image_url)
-    `)
+    `,
+    )
     .eq("auction_id", auction.id)
     .order("won_at", { ascending: true });
 
@@ -98,17 +101,11 @@ async function Inner() {
               <Card className="h-full hover:border-[var(--accent-line)] transition-colors duration-100 cursor-pointer">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    {t.logo_url ? (
-                      <img
-                        src={t.logo_url}
-                        alt=""
-                        className="h-10 w-10 rounded-md object-cover border border-[var(--line-1)]"
-                      />
-                    ) : (
-                      <div className="h-10 w-10 rounded-md bg-[var(--bg-2)] border border-[var(--line-1)] grid place-items-center text-[10px] text-[var(--fg-4)] font-mono">
-                        {t.name.slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
+                    <TeamLogo
+                      name={t.name}
+                      src={t.logo_url}
+                      className="!w-12 !h-12 mx-auto"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="text-[14px] font-medium text-[var(--fg-1)] truncate">
                         {t.name}

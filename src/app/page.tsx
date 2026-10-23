@@ -1,213 +1,279 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  ArrowRight, ArrowUpRight, AudioLines, Check, CircleDot, Gavel,
-  Layers3, Radio, ShieldCheck, Sparkles, Trophy, Users, Wallet, Zap,
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  Gavel,
+  Monitor,
+  ShieldCheck,
+  Users,
+  Wallet,
+  Zap,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { Logo } from "@/components/branding/Logo";
+import { Logo, BrandMark } from "@/components/branding/Logo";
 import { AuctionPreview } from "@/components/landing/AuctionPreview";
-import { Reveal } from "@/components/landing/Reveal";
 
 const features = [
-  { number: "01", icon: Zap, title: "Every bid. In sync.", description: "From the auctioneer's podium to every captain's screen, the action stays connected in real time." },
-  { number: "02", icon: Wallet, title: "Purses, perfectly clear.", description: "See budgets, winning bids and team compositions in one beautifully simple workspace." },
-  { number: "03", icon: Radio, title: "Bring everyone courtside.", description: "Give your audience a front-row view with live spectator and big-screen projector experiences." },
-];
-
-const roles = [
-  { icon: Gavel, title: "Auctioneers", desc: "Command the room.", tag: "RUN THE SHOW" },
-  { icon: Trophy, title: "Team captains", desc: "Build a winning squad.", tag: "MAKE YOUR MOVE" },
-  { icon: Users, title: "Organizers", desc: "Own every detail.", tag: "STAY IN CONTROL" },
-  { icon: AudioLines, title: "Spectators", desc: "Feel every moment.", tag: "WATCH IT UNFOLD" },
+  {
+    icon: Zap,
+    number: "01",
+    title: "Every bid, connected.",
+    description:
+      "Captains, auctioneers and spectators follow the same action with live bid updates and automatic refresh.",
+  },
+  {
+    icon: Wallet,
+    number: "02",
+    title: "Build with confidence.",
+    description:
+      "Track virtual purses, protect captain reserves and keep every squad within its category rules.",
+  },
+  {
+    icon: Monitor,
+    number: "03",
+    title: "Own the big screen.",
+    description:
+      "Bring player profiles, leading bids and winning moments to your venue with a dedicated projector view.",
+  },
 ];
 
 export default async function Home() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) redirect("/dashboard");
-
+  // The public product page remains available before a deployment is configured.
+  if (
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) redirect("/dashboard");
+  }
   return (
-    <main className="landing-page min-h-screen overflow-hidden">
-      <div aria-hidden="true" className="landing-ambient" />
-      <div aria-hidden="true" className="landing-grain" />
-      <nav className="landing-nav relative z-20 mx-auto flex h-[84px] max-w-[1320px] items-center justify-between px-6 md:px-10">
-        <Logo href="/" />
-        <div className="hidden items-center gap-9 md:flex">
-          <a href="#experience" className="landing-nav-link">The experience</a>
-          <a href="#features" className="landing-nav-link">Features</a>
-          <a href="#roles" className="landing-nav-link">Who it's for</a>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/login" className="landing-nav-link hidden sm:block">Log in</Link>
-          <Link href="/login?mode=signup" className="landing-nav-cta group">
-            Enter the arena <ArrowUpRight size={15} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+    <div className="marketing-page">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
+      <header className="marketing-header">
+        <div className="marketing-container marketing-nav">
+          <Logo href="/" />
+          <nav aria-label="Main navigation">
+            <a href="#experience">Experience</a>
+            <a href="#how-it-works">How it works</a>
+            <a href="#roles">For your team</a>
+          </nav>
+          <Link href="/login" className="marketing-signin">
+            Sign in <ArrowUpRight size={17} />
           </Link>
         </div>
-      </nav>
-
-      <section id="experience" className="relative mx-auto grid min-h-[730px] max-w-[1320px] items-center gap-14 px-6 pb-24 pt-14 md:px-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-8 lg:pb-28 lg:pt-20">
-        <div className="relative z-10 max-w-[630px]">
-          <div className="landing-eyebrow hero-enter">
-            <span className="landing-status-dot" />
-            THE NEXT ERA OF BADMINTON AUCTIONS
-            <ArrowUpRight size={13} className="opacity-60" />
-          </div>
-          <h1 className="landing-hero-title hero-enter hero-delay-1">
-            Every bid<br />
-            has <span className="landing-hero-accent">a moment.</span><br />
-            Make it count.
-          </h1>
-          <p className="hero-enter hero-delay-2 mt-7 max-w-[505px] text-[16px] leading-[1.85] text-[var(--fg-2)] md:text-[18px]">
-            The modern command center for badminton player auctions.
-            Bring the energy of a live arena to every bid, every team,
-            and every unforgettable winning moment.
-          </p>
-          <div className="hero-enter hero-delay-3 mt-9 flex flex-wrap items-center gap-4">
-            <Link href="/login?mode=signup" className="landing-primary-cta group">
-              Get started <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
-            </Link>
-            <a href="#features" className="landing-text-cta group">
-              Explore the experience
-              <span className="grid h-8 w-8 place-items-center rounded-full border border-white/15 transition-transform group-hover:translate-y-1">
-                <ArrowRight size={14} className="rotate-90" />
+      </header>
+      <main id="main-content">
+        <section className="marketing-container hero-grid">
+          <div className="hero-copy">
+            <span className="marketing-eyebrow">
+              <span /> BUILT FOR BADMINTON. MADE FOR THE MOMENT.
+            </span>
+            <h1>
+              GREAT TEAMS
+              <br />
+              START WITH
+              <br />
+              <span>A BOLD BID.</span>
+            </h1>
+            <p>
+              The auction room your tournament deserves. Bring your players,
+              captains and crowd together, from the first call to the final
+              hammer.
+            </p>
+            <div className="hero-buttons">
+              <Link href="/login" className="marketing-primary">
+                Enter your auction <ArrowUpRight size={20} />
+              </Link>
+              <Link href="/demo" className="marketing-secondary">
+                Explore the demo <ArrowRight size={18} />
+              </Link>
+            </div>
+            <div className="hero-proof">
+              <span>
+                <ShieldCheck size={15} /> Role-based access
               </span>
-            </a>
-          </div>
-          <div className="hero-enter hero-delay-4 mt-12 flex flex-wrap gap-x-8 gap-y-4 border-t border-white/10 pt-7">
-            <span className="flex items-center gap-2 text-[12px] text-[var(--fg-3)]"><Check size={15} className="text-[var(--accent)]" /> Real-time bidding</span>
-            <span className="flex items-center gap-2 text-[12px] text-[var(--fg-3)]"><Check size={15} className="text-[var(--accent)]" /> Role-based controls</span>
-            <span className="flex items-center gap-2 text-[12px] text-[var(--fg-3)]"><Check size={15} className="text-[var(--accent)]" /> Built for the big screen</span>
-          </div>
-        </div>
-
-        <div className="hero-enter hero-delay-2 relative z-10 min-w-0">
-          <div className="landing-showcase-halo" aria-hidden="true" />
-          <AuctionPreview />
-          <div className="landing-float-label landing-float-label-left hidden xl:flex">
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-[var(--success-bg)] text-[var(--success)]"><ShieldCheck size={17} /></span>
-            <div><strong>Instant updates</strong><small>Every screen, one arena</small></div>
-          </div>
-        </div>
-        <div aria-hidden="true" className="landing-court-lines" />
-      </section>
-
-      <div className="landing-ticker" aria-label="Platform highlights">
-        <div className="landing-ticker-inner">
-          {Array.from({ length: 2 }).map((_, repetition) => (
-            <div key={repetition} className="flex shrink-0 items-center gap-12 pr-12" aria-hidden={repetition === 1}>
-              <span>THE THRILL OF THE BID</span><Sparkles size={16} />
-              <span>THE POWER OF THE TEAM</span><Sparkles size={16} />
-              <span>THE ENERGY OF THE ARENA</span><Sparkles size={16} />
+              <span>
+                <Zap size={15} /> Realtime updates
+              </span>
             </div>
-          ))}
-        </div>
-      </div>
-
-      <section id="features" className="landing-section mx-auto max-w-[1320px] px-6 py-28 md:px-10 md:py-36">
-        <Reveal>
-          <div className="mb-14 flex flex-col justify-between gap-6 md:flex-row md:items-end">
-            <div className="max-w-[680px]">
-              <div className="landing-section-kicker"><CircleDot size={13} /> BUILT FOR THE MOMENT</div>
-              <h2 className="landing-section-title mt-5">Everything you need.<br /><span className="text-[var(--fg-3)]">Nothing in your way.</span></h2>
+          </div>
+          <div className="hero-preview-wrap">
+            <div className="hero-orbit" aria-hidden="true" />
+            <div className="hero-side-label" aria-hidden="true">
+              PRECISION / PASSION / POSSIBILITIES
             </div>
-            <p className="max-w-[320px] text-[14px] leading-7 text-[var(--fg-3)]">
-              Designed to make complex tournament-day operations feel effortless.
+            <AuctionPreview />
+            <div className="hero-caption">
+              <span>01 — THE LIVE EXPERIENCE</span>
+              <span>YOUR NEXT CHAPTER STARTS HERE ↗</span>
+            </div>
+          </div>
+        </section>
+        <div className="marketing-ribbon">
+          <div className="marketing-container">
+            <span>SET THE STAGE</span>
+            <span aria-hidden="true">↗</span>
+            <span>MAKE YOUR MOVE</span>
+            <span aria-hidden="true">↗</span>
+            <span>BUILD YOUR LEGACY</span>
+            <span aria-hidden="true">↗</span>
+          </div>
+        </div>
+        <section
+          id="experience"
+          className="marketing-container marketing-section"
+        >
+          <div className="section-intro">
+            <div>
+              <span className="marketing-eyebrow">
+                THE COMPLETE AUCTION EXPERIENCE
+              </span>
+              <h2>
+                Less to manage.
+                <br />
+                More to play for.
+              </h2>
+            </div>
+            <p>
+              One focused workspace for all the moving parts of auction day.
+              Clear information. Decisive controls. Room for the excitement.
             </p>
           </div>
-        </Reveal>
-        <div className="grid gap-4 md:grid-cols-3">
-          {features.map((feature, index) => {
-            const Icon = feature.icon;
-            return (
-              <Reveal key={feature.number} delay={index * 100}>
-                <article className="landing-feature-card group h-full">
-                  <div className="mb-20 flex items-start justify-between">
-                    <span className="landing-feature-icon"><Icon size={22} strokeWidth={1.6} /></span>
-                    <span className="font-mono text-[11px] tracking-wider text-[var(--fg-4)]">{feature.number} / 03</span>
-                  </div>
-                  <h3 className="text-[23px] font-semibold tracking-[-0.035em]">{feature.title}</h3>
-                  <p className="mt-4 max-w-[300px] text-[14px] leading-7 text-[var(--fg-3)]">{feature.description}</p>
-                  <div className="mt-8 h-px w-full bg-white/10 transition-colors group-hover:bg-[var(--accent-line)]" />
-                  <ArrowUpRight size={18} className="mt-5 text-[var(--fg-4)] transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-[var(--accent)]" />
-                </article>
-              </Reveal>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="landing-spotlight relative overflow-hidden border-y border-white/[0.07]">
-        <div className="mx-auto grid max-w-[1320px] items-center gap-16 px-6 py-24 md:px-10 lg:grid-cols-2 lg:py-32">
-          <Reveal>
-            <div className="landing-section-kicker"><Layers3 size={13} /> ONE SEAMLESS PLATFORM</div>
-            <h2 className="landing-section-title mt-6">From first call<br />to <em className="landing-hero-accent not-italic">final hammer.</em></h2>
-            <p className="mt-7 max-w-[470px] text-[15px] leading-8 text-[var(--fg-2)]">
-              One place to prepare players, manage teams, set the rules and run the live auction.
-              Everyone stays on the same page, even when the room gets loud.
-            </p>
-            <Link href="/login?mode=signup" className="landing-text-cta group mt-8 inline-flex">
-              Start your auction <ArrowRight size={17} className="transition-transform group-hover:translate-x-1" />
-            </Link>
-          </Reveal>
-          <Reveal delay={120}>
-            <div className="landing-process-card">
+          <div className="feature-grid">
+            {features.map(({ icon: Icon, number, title, description }) => (
+              <article className="marketing-feature" key={number}>
+                <div className="feature-top">
+                  <Icon size={27} strokeWidth={1.6} />
+                  <span>{number} /</span>
+                </div>
+                <h3>{title}</h3>
+                <p>{description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+        <section id="how-it-works" className="marketing-workflow">
+          <div className="marketing-container workflow-grid">
+            <div>
+              <span className="marketing-eyebrow">FROM SETUP TO SOLD</span>
+              <h2>
+                All the action.
+                <br />
+                One arena.
+              </h2>
+              <p>
+                Keep your attention on the room. Let a connected workflow handle
+                the details.
+              </p>
+              <Link href="/demo" className="marketing-primary">
+                Take a look inside <ArrowUpRight size={18} />
+              </Link>
+            </div>
+            <ol>
               {[
-                { number: "01", title: "Set the stage", text: "Organize players, grades and teams." },
-                { number: "02", title: "Open the floor", text: "Connect auctioneers, captains and viewers." },
-                { number: "03", title: "Let the bids fly", text: "Follow every bid and winning team in real time." },
-              ].map((step, index) => (
-                <div key={step.number} className="relative flex gap-5 pb-9 last:pb-0">
-                  {index < 2 && <div className="absolute left-[21px] top-[50px] h-[calc(100%-52px)] w-px bg-gradient-to-b from-[var(--accent-line)] to-transparent" />}
-                  <div className="relative z-10 grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-[var(--accent-line)] bg-[var(--accent-bg)] font-mono text-[12px] text-[var(--accent)]">{step.number}</div>
-                  <div className="pt-0.5"><h3 className="text-[19px] font-medium">{step.title}</h3><p className="mt-2 text-[13px] leading-6 text-[var(--fg-3)]">{step.text}</p></div>
-                </div>
+                {
+                  title: "Set your lineup",
+                  desc: "Review registrations, grade players and assign team captains.",
+                },
+                {
+                  title: "Bring everyone in",
+                  desc: "Give each role the tools they need. Share spectator links with your audience.",
+                },
+                {
+                  title: "Let the bidding begin",
+                  desc: "Draw players, follow the bids and confirm sales. Team rosters and purses update together.",
+                },
+              ].map((s, i) => (
+                <li key={s.title}>
+                  <span>0{i + 1}</span>
+                  <div>
+                    <h3>{s.title}</h3>
+                    <p>{s.desc}</p>
+                  </div>
+                  <Check size={19} />
+                </li>
               ))}
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      <section id="roles" className="mx-auto max-w-[1320px] px-6 py-28 md:px-10 md:py-36">
-        <Reveal>
-          <div className="landing-section-kicker"><Users size={13} /> MADE FOR EVERY SEAT</div>
-          <h2 className="landing-section-title mt-5">One arena.<br /><span className="text-[var(--fg-3)]">Everyone connected.</span></h2>
-        </Reveal>
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {roles.map((role, index) => {
-            const Icon = role.icon;
-            return (
-              <Reveal key={role.title} delay={index * 80}>
-                <div className="landing-role-card group h-full">
-                  <div className="flex items-center justify-between"><Icon size={23} className="text-[var(--accent)]" strokeWidth={1.6} /><ArrowUpRight size={17} className="text-[var(--fg-4)] transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" /></div>
-                  <div className="mt-16 font-mono text-[10px] tracking-[0.17em] text-[var(--fg-4)]">{role.tag}</div>
-                  <h3 className="mt-3 text-[21px] font-semibold">{role.title}</h3>
-                  <p className="mt-2 text-[13px] text-[var(--fg-3)]">{role.desc}</p>
-                </div>
-              </Reveal>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="px-6 pb-24 md:px-10">
-        <Reveal>
-          <div className="landing-final-cta relative mx-auto max-w-[1240px] overflow-hidden px-7 py-16 text-center md:py-24">
-            <div className="landing-section-kicker justify-center"><Sparkles size={14} /> YOUR NEXT AUCTION STARTS HERE</div>
-            <h2 className="landing-section-title mx-auto mt-6 max-w-[740px]">Ready to bring the<br /><span className="landing-hero-accent">arena to life?</span></h2>
-            <p className="mx-auto mt-5 max-w-[440px] text-[14px] leading-7 text-[var(--fg-2)]">Less admin. More action. Make your next badminton auction one to remember.</p>
-            <Link href="/login?mode=signup" className="landing-primary-cta group mt-9 inline-flex">Enter the arena <ArrowRight size={17} className="transition-transform group-hover:translate-x-1" /></Link>
+            </ol>
           </div>
-        </Reveal>
-      </section>
-
-      <footer className="relative border-t border-white/[0.07]">
-        <div className="mx-auto flex max-w-[1320px] flex-col items-start justify-between gap-5 px-6 py-9 md:flex-row md:items-center md:px-10">
-          <Logo href="/" size="sm" />
-          <span className="text-[12px] text-[var(--fg-4)]">Crafted for the moments that make a tournament.</span>
-          <span className="font-mono text-[11px] tracking-widest text-[var(--fg-4)]">S AUCTION SYSTEM</span>
+        </section>
+        <section id="roles" className="marketing-container marketing-section">
+          <div className="section-intro">
+            <div>
+              <span className="marketing-eyebrow">A PLACE FOR EVERY ROLE</span>
+              <h2>
+                Your team.
+                <br />
+                In perfect sync.
+              </h2>
+            </div>
+            <p>
+              The right view for every seat in the room, with permissions that
+              keep each person focused.
+            </p>
+          </div>
+          <div className="roles-grid">
+            {[
+              {
+                icon: ShieldCheck,
+                title: "Organizers",
+                text: "Prepare the event. Manage access. Keep the whole picture in view.",
+              },
+              {
+                icon: Gavel,
+                title: "Auctioneers",
+                text: "Control the pace, draw the next player and make the final call.",
+              },
+              {
+                icon: Users,
+                title: "Captains",
+                text: "Follow your purse, place your bid and shape your winning squad.",
+              },
+              {
+                icon: Monitor,
+                title: "Spectators",
+                text: "Watch every moment unfold from a live link or the venue screen.",
+              },
+            ].map(({ icon: Icon, title, text }) => (
+              <article key={title}>
+                <Icon size={25} strokeWidth={1.6} />
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+        <section className="marketing-container">
+          <div className="marketing-final">
+            <BrandMark className="h-14 w-14" />
+            <span className="marketing-eyebrow">THE TEAM STARTS HERE</span>
+            <h2>
+              Make your next
+              <br />
+              auction a statement.
+            </h2>
+            <Link href="/login" className="marketing-primary">
+              Let’s get you courtside <ArrowUpRight size={20} />
+            </Link>
+          </div>
+        </section>
+      </main>
+      <footer className="marketing-container marketing-footer">
+        <Logo href="/" size="sm" />
+        <p>Built for the game. Designed for your team.</p>
+        <div>
+          <Link href="/demo">Try the demo</Link>
+          <Link href="/login">
+            Sign in <ArrowUpRight size={13} />
+          </Link>
         </div>
       </footer>
-    </main>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { TeamLogo } from "@/components/branding/TeamLogo";
 import Link from "next/link";
 import { useAuctionState } from "@/hooks/useAuctionState";
 import { Card, CardBody } from "@/components/ui/card";
@@ -19,7 +20,11 @@ export function LiveViewer({
   viewerToken?: string;
   teamLinkBase?: string;
 }) {
-  const { state, loading, realtimeConnected } = useAuctionState(auctionId, 2500, viewerToken);
+  const { state, loading, realtimeConnected } = useAuctionState(
+    auctionId,
+    2500,
+    viewerToken,
+  );
 
   if (loading || !state) {
     return <div className="text-[13px] text-[var(--fg-3)]">Loading…</div>;
@@ -29,8 +34,8 @@ export function LiveViewer({
   const isLive = auction?.status === "LIVE";
 
   const basePrice = current?.player?.grade
-  ? getBasePrice(auction?.config, current.player.grade)
-  : 0;
+    ? getBasePrice(auction?.config, current.player.grade)
+    : 0;
 
   return (
     <div className="space-y-6 max-w-6xl animate-fade-up">
@@ -41,7 +46,9 @@ export function LiveViewer({
             Live Auction
           </h1>
           <p className="text-[11px] text-[var(--fg-3)] mt-1" role="status">
-            {realtimeConnected ? "● Realtime connected" : "○ Reconnecting · automatic refresh active"}
+            {realtimeConnected
+              ? "● Realtime connected"
+              : "○ Reconnecting · automatic refresh active"}
           </p>
           <p className="text-[13px] text-[var(--fg-3)] mt-1">
             {auction?.name} ·{" "}
@@ -91,17 +98,11 @@ export function LiveViewer({
                   }
                 >
                   <CardBody className="p-3 text-center">
-                    {t.logo_url ? (
-                      <img
-                        src={t.logo_url}
-                        alt=""
-                        className="h-10 w-10 mx-auto rounded-md object-cover border border-[var(--line-1)]"
-                      />
-                    ) : (
-                      <div className="h-10 w-10 mx-auto rounded-md bg-[var(--bg-2)] border border-[var(--line-1)] grid place-items-center text-[10px] font-mono text-[var(--fg-4)]">
-                        {t.name.slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
+                    <TeamLogo
+                      name={t.name}
+                      src={t.logo_url}
+                      className="!w-12 !h-12 mx-auto"
+                    />
                     <div className="text-[12px] text-[var(--fg-1)] font-medium truncate mt-2">
                       {t.name}
                     </div>

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardBody } from "@/components/ui/card";
+import { AuctionOverview } from "@/components/dashboard/AuctionOverview";
 import { RoleBadge } from "@/components/layout/RoleBadge";
 import type { Role } from "@/types/roles";
 
@@ -35,15 +36,53 @@ export default async function DashboardPage() {
   const role = (profile?.role ?? "VIEWER") as Role;
   const name = profile?.display_name ?? user.email;
 
+  const { data: auction, error: auctionError } = await supabase
+    .from("auctions")
+    .select("id")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const destination =
+    role === "CAPTAIN"
+      ? "/captain/bid"
+      : role === "VIEWER"
+        ? "/viewer/live"
+        : "/auctioneer/console";
+
   return (
-    <div className="space-y-6 max-w-5xl animate-fade-up">
+    <div className="space-y-6 max-w-7xl animate-fade-up">
       <header className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-[22px] font-semibold tracking-tight">
-          Welcome, {name}
+        <h1 className="dashboard-title">
+          Your arena, {name?.split(" ")[0] ?? "ready"}.
         </h1>
         <RoleBadge role={role} />
       </header>
 
+      {auction ? (
+        <AuctionOverview auctionId={auction.id} destination={destination} />
+      ) : (
+        <div className="dashboard-banner">
+          <div>
+            <span className="eyebrow !text-[var(--accent)]">
+              LET’S SET THE STAGE
+            </span>
+            <h2>
+              {auctionError
+                ? "Could not load your auction"
+                : "Your next auction starts here."}
+            </h2>
+            <p>
+              {auctionError
+                ? "Refresh the page to try again."
+                : "Prepare your teams and players using the tools below. Your auction overview will appear here."}
+            </p>
+          </div>
+        </div>
+      )}
+      <div className="pt-3">
+        <span className="eyebrow">YOUR WORKSPACE</span>
+        <h2 className="text-xl mt-2">Make your next move.</h2>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {role === "MAIN_CONTROLLER" && (
           <>
@@ -63,7 +102,7 @@ export default async function DashboardPage() {
               href="/admin/teams"
               icon={Users}
               title="Manage teams"
-              desc="Create 6 teams, assign captains."
+              desc="Manage your teams and captain partnerships."
             />
             <QuickCard
               href="/admin/auction"
@@ -101,24 +140,12 @@ export default async function DashboardPage() {
         )}
 
         <QuickCard
-          href={role === "VIEWER" ? "/viewer/live" : "/captain/teams"}
+          href="/viewer/live"
           icon={Radio}
           title="Live auction"
           desc="Watch the current player and live bids."
         />
       </div>
-
-      <Card>
-        <CardBody className="p-5">
-          <div className="text-[14px] font-medium text-[var(--fg-1)]">
-            Status
-          </div>
-          <p className="text-[13px] text-[var(--fg-3)] mt-1 leading-relaxed">
-            Once the Main Controller opens the auction, this dashboard will show
-            live updates.
-          </p>
-        </CardBody>
-      </Card>
     </div>
   );
 }
@@ -140,7 +167,11 @@ function QuickCard({
         <CardBody className="p-5 space-y-3">
           <div className="flex items-start justify-between">
             <div className="h-8 w-8 grid place-items-center rounded-md border border-[var(--line-1)] bg-[var(--bg-2)]">
-              <Icon size={15} strokeWidth={1.75} className="text-[var(--accent)]" />
+              <Icon
+                size={15}
+                strokeWidth={1.75}
+                className="text-[var(--accent)]"
+              />
             </div>
             <ArrowRight
               size={14}

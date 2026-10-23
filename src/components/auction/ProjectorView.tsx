@@ -1,5 +1,6 @@
 "use client";
 
+import { TeamLogo } from "@/components/branding/TeamLogo";
 import { useAuctionState } from "@/hooks/useAuctionState";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
 import { SoldCelebration } from "@/components/auction/SoldCelebration";
@@ -16,7 +17,11 @@ export function ProjectorView({
   showPurse?: boolean;
   viewerToken?: string;
 }) {
-  const { state, loading, realtimeConnected } = useAuctionState(auctionId, 2000, viewerToken);
+  const { state, loading, realtimeConnected } = useAuctionState(
+    auctionId,
+    2000,
+    viewerToken,
+  );
 
   if (loading || !state) {
     return (
@@ -29,8 +34,8 @@ export function ProjectorView({
   const { auction, current, highestBid, teams } = state;
   const isLive = auction?.status === "LIVE";
   const basePrice = current?.player?.grade
-  ? getBasePrice(auction?.config, current.player.grade)
-  : 0;
+    ? getBasePrice(auction?.config, current.player.grade)
+    : 0;
 
   const leader = highestBid
     ? teams.find((t) => t.id === highestBid.team_id)
@@ -48,7 +53,9 @@ export function ProjectorView({
             {auction?.name}
           </div>
           <div className="text-[11px] text-[var(--fg-4)] mt-1" role="status">
-            {realtimeConnected ? "● Realtime connected" : "○ Reconnecting · automatic refresh active"}
+            {realtimeConnected
+              ? "● Realtime connected"
+              : "○ Reconnecting · automatic refresh active"}
           </div>
         </div>
         <div
@@ -108,17 +115,11 @@ export function ProjectorView({
                       : "border-[var(--line-1)] bg-[var(--bg-1)]"
                   }`}
                 >
-                  {t.logo_url ? (
-                    <img
-                      src={t.logo_url}
-                      alt=""
-                      className="h-10 w-10 rounded-md object-cover border border-[var(--line-1)]"
-                    />
-                  ) : (
-                    <div className="h-10 w-10 rounded-md bg-[var(--bg-2)] border border-[var(--line-1)] grid place-items-center text-[10px] font-mono text-[var(--fg-4)]">
-                      {t.name.slice(0, 2).toUpperCase()}
-                    </div>
-                  )}
+                  <TeamLogo
+                    name={t.name}
+                    src={t.logo_url}
+                    className="!w-12 !h-12 mx-auto"
+                  />
                   <div className="flex-1 min-w-0">
                     <div
                       className={`text-[13px] font-medium truncate ${

@@ -1,6 +1,6 @@
 {
-  "name": "MyWebSite",
-  "short_name": "MySite",
+  "name": "S Auction",
+  "short_name": "S Auction",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
@@ -15,7 +15,9 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
-  "display": "standalone"
+  "theme_color": "#101820",
+  "background_color": "#101820",
+  "display": "standalone",
+  "description": "Your connected badminton auction arena.",
+  "start_url": "/"
 }
