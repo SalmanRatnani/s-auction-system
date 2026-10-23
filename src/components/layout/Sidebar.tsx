@@ -40,6 +40,7 @@ const NAV: Record<Role, NavItem[]> = {
     { href: "/admin/viewer-links", label: "Viewer Links", icon: Link2 },
     { href: "/admin/audit", label: "Audit Log", icon: History },
     { href: "/admin/exports", label: "Exports", icon: Download },
+    { href: "/transfer-to-tournament", label: "Export to Tournament", icon: Download },
   ],
   AUCTIONEER: [
     { href: "/auctioneer/console", label: "Auction Console", icon: Gavel },
