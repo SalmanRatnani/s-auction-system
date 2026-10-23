@@ -11,6 +11,7 @@ import {
 import { useAuctionState } from "@/hooks/useAuctionState";
 import { TeamLogo } from "@/components/branding/TeamLogo";
 import { formatINR } from "@/lib/utils";
+import { AnimatedAmount } from "@/components/ui/animated-amount";
 
 export function AuctionOverview({
   auctionId,
@@ -54,7 +55,7 @@ export function AuctionOverview({
   const spent = teams.reduce((n, t) => n + t.spent, 0);
   return (
     <>
-      <div className="dashboard-banner">
+      <div className="dashboard-banner animate-fade-up">
         <div>
           <div className="flex gap-3 items-center">
             <span className="eyebrow !text-[var(--accent)]">
@@ -95,7 +96,7 @@ export function AuctionOverview({
           ? "Live updates connected"
           : "Automatic refresh active · reconnecting to live updates"}
       </div>
-      <div className="stat-grid">
+      <div className="stat-grid stagger-enter">
         {[
           {
             label: "TEAMS",
@@ -127,12 +128,16 @@ export function AuctionOverview({
               <span className="eyebrow">{label}</span>
               <Icon size={17} className="text-[var(--accent)]" />
             </div>
-            <strong>{value}</strong>
+            <strong>
+              <span key={value} className="amount-update">
+                {value}
+              </span>
+            </strong>
             <small>{detail}</small>
           </div>
         ))}
       </div>
-      <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+      <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr] stagger-enter">
         <section className="rounded-xl border border-[var(--line-2)] bg-[var(--bg-1)] p-6">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-base">Teams in the arena</h3>
@@ -153,7 +158,7 @@ export function AuctionOverview({
                 </div>
                 <div className="text-right">
                   <strong className="tnum text-[var(--accent)]">
-                    {formatINR(team.remaining_purse, { compact: true })}
+                    <AnimatedAmount value={team.remaining_purse} />
                   </strong>
                   <small>Virtual purse</small>
                 </div>

@@ -45,7 +45,7 @@ export function PlayerOnBlock({
   return (
     <section
       key={player.id}
-      className="player-spotlight animate-fade-up"
+      className="player-spotlight animate-player-reveal"
       aria-label="Player on the block"
     >
       <div className="player-spotlight-grid">
@@ -100,18 +100,29 @@ export function PlayerOnBlock({
           <div>
             <span className="eyebrow !text-[var(--accent)]">CURRENT BID</span>
             <p
-              key={highestBid?.id ?? "no-bid"}
               className="player-bid-amount tnum"
               aria-live="polite"
               aria-atomic="true"
             >
-              {currentBid && currentBid > 0
-                ? formatINR(currentBid, { compact: true })
-                : "Awaiting bid"}
+              <span
+                key={highestBid?.id ?? currentBid ?? "no-bid"}
+                className={currentBid ? "amount-update" : undefined}
+              >
+                {currentBid && currentBid > 0
+                  ? formatINR(currentBid, { compact: true })
+                  : "Awaiting bid"}
+              </span>
             </p>
             {leader && (
-              <div className="flex items-center gap-2 mt-4">
-                <TeamLogo name={leader.name} src={leader.logo_url} className="!w-8 !h-8" />
+              <div
+                key={leader.id}
+                className="flex items-center gap-2 mt-4 animate-fade-in"
+              >
+                <TeamLogo
+                  name={leader.name}
+                  src={leader.logo_url}
+                  className="!w-8 !h-8"
+                />
                 <div className="min-w-0">
                   <span className="text-[8px] tracking-widest text-[var(--fg-3)]">
                     LEADING TEAM

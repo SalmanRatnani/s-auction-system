@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatINR } from "@/lib/utils";
 import { toneForGrade } from "@/constants/categories";
@@ -17,12 +19,27 @@ const CONFETTI_COLORS = [
 const SHOW_MS = 5000;
 
 /**
- * Full-screen SOLD moment. Fires when a NEW sale appears after the page has
- * loaded (the sale already present on first load is ignored). Click to dismiss.
+ * Non-modal SOLD moment. New sales celebrate without blocking bidding controls
+ * or moving keyboard focus. The sale already present on first load is ignored.
  */
-export function SoldCelebration({ lastSale }: { lastSale: LastSale | null | undefined }) {
+export function SoldCelebration({
+  lastSale,
+}: {
+  lastSale: LastSale | null | undefined;
+}) {
   const seenRef = useRef<string | null | undefined>(undefined); // undefined = first render
   const [active, setActive] = useState<LastSale | null>(null);
+  const [engaged, setEngaged] = useState(false);
+  const card = useRef<HTMLDivElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
+  const dismiss = useCallback(() => {
+    if (
+      card.current?.contains(document.activeElement) &&
+      returnFocus.current?.isConnected
+    )
+      returnFocus.current.focus();
+    setActive(null);
+  }, []);
 
   useEffect(() => {
     if (seenRef.current === undefined) {
@@ -31,15 +48,24 @@ export function SoldCelebration({ lastSale }: { lastSale: LastSale | null | unde
     }
     if (lastSale && lastSale.id !== seenRef.current) {
       seenRef.current = lastSale.id;
+      setEngaged(false);
       setActive(lastSale);
     }
   }, [lastSale]);
 
   useEffect(() => {
     if (!active) return;
-    const t = setTimeout(() => setActive(null), SHOW_MS);
-    return () => clearTimeout(t);
-  }, [active]);
+    // Once someone interacts, leave dismissal in their control.
+    const t = engaged ? null : setTimeout(dismiss, SHOW_MS);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") dismiss();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      if (t !== null) clearTimeout(t);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [active, engaged, dismiss]);
 
   // Deterministic spread (no randomness → stable across renders)
   const pieces = useMemo(
@@ -52,72 +78,111 @@ export function SoldCelebration({ lastSale }: { lastSale: LastSale | null | unde
         drift: ((i * 29) % 120) - 60,
         color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
       })),
-    []
+    [],
   );
 
-  if (!active) return null;
-
-  const assigned = active.acquired_via === "MANUAL_ALLOT";
+  const assigned = active?.acquired_via === "MANUAL_ALLOT";
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      onClick={() => setActive(null)}
-      className="fixed inset-0 z-[100] grid place-items-center bg-black/70 backdrop-blur-sm animate-fade-in cursor-pointer p-6"
-    >
-      <div className="confetti-layer" aria-hidden>
-        {pieces.map((p, i) => (
-          <span
-            key={`${active.id}-${i}`}
-            className="confetti-piece"
-            style={{
-              left: `${p.left}%`,
-              width: p.size,
-              height: p.size * 1.6,
-              background: p.color,
-              animationDelay: `${p.delay}s`,
-              animationDuration: `${p.duration}s`,
-              ["--drift" as string]: `${p.drift}px`,
-            }}
-          />
-        ))}
-      </div>
+    <>
+      <span className="sr-only" role="status" aria-atomic="true">
+        {active
+          ? `${assigned ? "Captain assigned" : "Sold"}: ${active.player_name} to ${active.team_name} for ${formatINR(active.price)} in virtual auction credits.`
+          : ""}
+      </span>
+      {active &&
+        createPortal(
+          <div className="sale-celebration" key={active.id}>
+            <div className="confetti-layer" aria-hidden>
+              {pieces.map((p, i) => (
+                <span
+                  key={`${active.id}-${i}`}
+                  className="confetti-piece"
+                  style={{
+                    left: `${p.left}%`,
+                    width: p.size,
+                    height: p.size * 1.6,
+                    background: p.color,
+                    animationDelay: `${p.delay}s`,
+                    animationDuration: `${p.duration}s`,
+                    ["--drift" as string]: `${p.drift}px`,
+                  }}
+                />
+              ))}
+            </div>
 
-      <div className="relative animate-sold-in text-center rounded-2xl border border-[var(--accent-line)] bg-[var(--bg-1)] px-8 py-8 md:px-14 md:py-10 max-w-md w-full shadow-[0_0_80px_rgba(228,183,92,0.18)]">
-        {active.image_url ? (
-          <img
-            src={active.image_url}
-            alt=""
-            className="h-24 w-24 md:h-28 md:w-28 rounded-full object-cover mx-auto border-2 border-[var(--accent-line)]"
-          />
-        ) : (
-          <div className="h-24 w-24 rounded-full bg-[var(--bg-2)] mx-auto border-2 border-[var(--accent-line)]" />
+            <div
+              ref={card}
+              className="sale-moment animate-sold-in"
+              onPointerEnter={() => setEngaged(true)}
+              onFocusCapture={(event) => {
+                setEngaged(true);
+                if (!event.currentTarget.contains(event.relatedTarget))
+                  returnFocus.current =
+                    event.relatedTarget instanceof HTMLElement
+                      ? event.relatedTarget
+                      : null;
+              }}
+            >
+              <button
+                type="button"
+                className="sale-dismiss"
+                aria-label="Dismiss sale celebration"
+                onClick={dismiss}
+              >
+                <X size={18} />
+              </button>
+              <div>
+                {active.image_url ? (
+                  <img
+                    src={active.image_url}
+                    alt=""
+                    className="h-16 w-16 rounded-full object-cover mx-auto border-2 border-[var(--accent-line)]"
+                  />
+                ) : (
+                  <div aria-hidden="true" className="sale-monogram">
+                    {active.player_name
+                      .trim()
+                      .split(/\s+/)
+                      .slice(0, 2)
+                      .map((word) => word[0])
+                      .join("")}
+                  </div>
+                )}
+
+                <div className="text-[10px] uppercase tracking-[0.25em] text-[var(--accent)] mt-4">
+                  {assigned ? "Captain assigned" : "Sold"}
+                </div>
+
+                <h2 className="text-2xl font-semibold tracking-tight leading-tight mt-2 break-words">
+                  {active.player_name}
+                </h2>
+
+                {active.grade && (
+                  <div className="mt-2">
+                    <Badge tone={toneForGrade(active.grade)}>
+                      {active.grade}
+                    </Badge>
+                  </div>
+                )}
+
+                <div className="text-[11px] text-[var(--fg-3)] mt-3">to</div>
+                <div className="text-xl font-semibold text-[var(--accent)] leading-tight break-words">
+                  {active.team_name}
+                </div>
+
+                <div className="text-3xl font-semibold tnum mt-3">
+                  {formatINR(active.price, { compact: true })}
+                </div>
+                <p className="text-[10px] text-[var(--fg-3)] mt-1">
+                  Virtual auction credits
+                </p>
+              </div>
+              {!engaged && <span className="sale-timer" aria-hidden="true" />}
+            </div>
+          </div>,
+          document.body,
         )}
-
-        <div className="text-[12px] uppercase tracking-[0.35em] text-[var(--accent)] mt-6">
-          {assigned ? "Captain assigned" : "Sold"}
-        </div>
-
-        <h2 className="text-[28px] md:text-[34px] font-semibold tracking-[-0.02em] leading-tight mt-2">
-          {active.player_name}
-        </h2>
-
-        {active.grade && (
-          <div className="mt-2">
-            <Badge tone={toneForGrade(active.grade)}>{active.grade}</Badge>
-          </div>
-        )}
-
-        <div className="text-[13px] text-[var(--fg-3)] mt-5">to</div>
-        <div className="text-[26px] md:text-[30px] font-semibold text-[var(--accent)] leading-tight">
-          {active.team_name}
-        </div>
-
-        <div className="text-[34px] md:text-[40px] font-semibold tnum mt-3">
-          {formatINR(active.price, { compact: true })}
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

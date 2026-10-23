@@ -21,51 +21,53 @@ export function AuctionPreview() {
       </div>
       <div className="preview-player">
         <div className="preview-player-art" aria-hidden="true">
-          <svg viewBox="0 0 240 240" fill="none">
-            <circle
-              cx="120"
-              cy="120"
-              r="94"
-              stroke="currentColor"
-              strokeOpacity=".25"
-            />
-            <circle
-              cx="120"
-              cy="120"
-              r="73"
-              stroke="currentColor"
-              strokeOpacity=".15"
-              strokeDasharray="3 7"
-            />
-            <g transform="rotate(32 120 120)">
-              <ellipse
+          <div className="preview-art-motion">
+            <svg viewBox="0 0 240 240" fill="none">
+              <circle
                 cx="120"
-                cy="86"
-                rx="42"
-                ry="53"
+                cy="120"
+                r="94"
                 stroke="currentColor"
-                strokeWidth="5"
+                strokeOpacity=".25"
               />
+              <circle
+                cx="120"
+                cy="120"
+                r="73"
+                stroke="currentColor"
+                strokeOpacity=".15"
+                strokeDasharray="3 7"
+              />
+              <g transform="rotate(32 120 120)">
+                <ellipse
+                  cx="120"
+                  cy="86"
+                  rx="42"
+                  ry="53"
+                  stroke="currentColor"
+                  strokeWidth="5"
+                />
+                <path
+                  d="M91 48v76m14-85v96m15-102v106m15-100v96m14-87v76M80 66h80M78 82h84M80 98h80m-74 16h68"
+                  stroke="currentColor"
+                  strokeOpacity=".4"
+                />
+                <path d="M120 139v49" stroke="currentColor" strokeWidth="5" />
+                <path
+                  d="M120 184v39"
+                  stroke="currentColor"
+                  strokeWidth="11"
+                  strokeLinecap="round"
+                />
+              </g>
               <path
-                d="M91 48v76m14-85v96m15-102v106m15-100v96m14-87v76M80 66h80M78 82h84M80 98h80m-74 16h68"
+                d="m180 157 27 5-14 23-12-6-1-22Z"
                 stroke="currentColor"
-                strokeOpacity=".4"
+                strokeWidth="2"
               />
-              <path d="M120 139v49" stroke="currentColor" strokeWidth="5" />
-              <path
-                d="M120 184v39"
-                stroke="currentColor"
-                strokeWidth="11"
-                strokeLinecap="round"
-              />
-            </g>
-            <path
-              d="m180 157 27 5-14 23-12-6-1-22Z"
-              stroke="currentColor"
-              strokeWidth="2"
-            />
-            <path d="m183 179 7 4-4 6-6-4 3-6Z" fill="currentColor" />
-          </svg>
+              <path d="m183 179 7 4-4 6-6-4 3-6Z" fill="currentColor" />
+            </svg>
+          </div>
           <span>PLAYER / 042</span>
         </div>
         <div className="preview-player-info">
@@ -89,12 +91,19 @@ export function AuctionPreview() {
           </span>
         </div>
         <div className="preview-amount" aria-live="polite" aria-atomic="true">
-          ₹{money.format(bid)}
+          <span key={bids} className={bids ? "amount-update" : undefined}>
+            ₹{money.format(bid)}
+          </span>
           <small>VIRTUAL CREDITS</small>
         </div>
         <div className="preview-leader">
-          <TeamLogo name={team} />
-          <div>
+          <span
+            key={`crest-${team}`}
+            className="preview-crest animate-scale-in"
+          >
+            <TeamLogo name={team} />
+          </span>
+          <div key={team} className="animate-fade-in">
             <small>LEADING TEAM</small>
             <strong>{team}</strong>
           </div>
@@ -103,7 +112,10 @@ export function AuctionPreview() {
       </div>
       <div className="preview-actions">
         <button className="arena-button" onClick={() => setBids((n) => n + 1)}>
-          <Gavel size={18} /> Place a demo bid <ArrowUpRight size={19} />
+          <span key={bids} className={bids ? "bid-gavel" : undefined}>
+            <Gavel size={18} />
+          </span>{" "}
+          Place a demo bid <ArrowUpRight size={19} />
         </button>
         <button
           className="preview-reset"

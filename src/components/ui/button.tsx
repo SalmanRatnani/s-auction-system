@@ -48,7 +48,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       aria-busy={loading || undefined}
       className={cn(
         "inline-flex items-center justify-center font-medium",
-        "transition-[background-color,border-color,color,opacity,transform] duration-150 active:scale-[0.97]",
+        "ui-button",
         "disabled:opacity-40 disabled:pointer-events-none",
         "focus:outline-none focus-visible:shadow-[0_0_0_2px_var(--bg-0),0_0_0_4px_var(--accent-line)]",
         variants[variant],
@@ -58,7 +58,10 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       {...props}
     >
       {loading && (
-        <span className="h-3.5 w-3.5 rounded-full border-[1.5px] border-current border-t-transparent animate-spin-slow" />
+        <span
+          aria-hidden="true"
+          className="h-3.5 w-3.5 rounded-full border-[1.5px] border-current border-t-transparent animate-spin-slow"
+        />
       )}
       {children}
     </button>

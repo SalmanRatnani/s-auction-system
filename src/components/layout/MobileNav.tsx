@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
@@ -17,6 +17,9 @@ export function MobileNav({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
+  const previousOverflow = useRef<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const dialogId = useId();
   const pathname = usePathname();
   useEffect(() => {
     const media = window.matchMedia("(min-width: 768px)");
@@ -26,7 +29,8 @@ export function MobileNav({
     media.addEventListener("change", closeOnDesktop);
     return () => {
       media.removeEventListener("change", closeOnDesktop);
-      document.body.style.overflow = "";
+      if (previousOverflow.current !== null)
+        document.body.style.overflow = previousOverflow.current;
     };
   }, []);
   function close() {
@@ -39,21 +43,30 @@ export function MobileNav({
         type="button"
         onClick={() => {
           dialog.current?.showModal();
+          previousOverflow.current = document.body.style.overflow;
           document.body.style.overflow = "hidden";
+          setOpen(true);
         }}
         className="md:hidden grid h-11 w-11 place-items-center rounded-lg border border-[var(--line-2)]"
         aria-label="Open navigation"
         aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={dialogId}
       >
         <Menu size={20} />
       </button>
       <dialog
         ref={dialog}
+        id={dialogId}
         aria-label="Workspace navigation"
         className="drawer-dialog"
         onClose={() => {
-          document.body.style.overflow = "";
-          trigger.current?.focus();
+          if (previousOverflow.current !== null)
+            document.body.style.overflow = previousOverflow.current;
+          previousOverflow.current = null;
+          setOpen(false);
+          if (!window.matchMedia("(min-width: 768px)").matches)
+            trigger.current?.focus();
         }}
         onClick={(e) => {
           if (

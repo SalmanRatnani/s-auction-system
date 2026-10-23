@@ -12,6 +12,16 @@ This update gives the existing auction system a navy, lime and off-white visual 
 - Inline custom bids, purse-aware bid controls, duplicate-submit guards and recoverable connection errors. Existing server/database validation remains authoritative.
 - Self-hosted Inter fonts with their SIL Open Font License in `public/fonts/OFL.txt`.
 
+## Motion and interaction polish
+
+- Coordinated hero and illustration entrances, one-time scroll reveals, animated navigation underlines and restrained button/arrow feedback. Scroll content is visible without JavaScript; already-visible content is not hidden after hydration.
+- Short workspace route transitions preserve the child tree and do not replay when realtime auction data updates. Dashboard cards enter in a brief sequence; player changes and incoming bids have distinct visual cues.
+- Bid and purse values render their exact new value immediately, with a brief highlight. Monetary figures never count through intermediate amounts.
+- The demo has a sliding perspective selector with arrow-key/Home/End navigation, an associated tab panel, clear action feedback, sale confirmation and a virtual purse limit.
+- The native mobile dialog animates in and out on browsers supporting discrete transitions, with an immediate-close fallback. Focus trapping, Escape, focus restoration and existing body overflow are preserved.
+- Sales use a dismissible, non-modal celebration with finite confetti and Escape dismissal. The rest of the workspace remains interactive.
+- CSS and Web Animations honor reduced motion, including preference changes during a running animation. Focus cancels decorative reveals. No animation dependencies were added.
+
 ## Security changes
 
 - Block cross-origin browser writes at the API boundary; routes retain their own authentication, authorization or webhook signature checks.
