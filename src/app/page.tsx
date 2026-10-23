@@ -12,9 +12,11 @@ import {
   Zap,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { Logo, BrandMark } from "@/components/branding/Logo";
+import { Logo } from "@/components/branding/Logo";
+import { BrandSculpture } from "@/components/branding/BrandSculpture";
 import { AuctionPreview } from "@/components/landing/AuctionPreview";
 import { Reveal } from "@/components/landing/Reveal";
+import { ArenaScene } from "@/components/three/ArenaScene";
 
 const features = [
   {
@@ -106,10 +108,10 @@ export default async function Home() {
             </div>
           </div>
           <div className="hero-preview-wrap">
-            <div className="hero-orbit" aria-hidden="true" />
             <div className="hero-side-label" aria-hidden="true">
               PRECISION / PASSION / POSSIBILITIES
             </div>
+            <ArenaScene />
             <AuctionPreview />
             <div className="hero-caption">
               <span>01 — THE LIVE EXPERIENCE</span>
@@ -157,7 +159,9 @@ export default async function Home() {
                   data-reveal-delay={index * 70}
                 >
                   <div className="feature-top">
-                    <Icon size={27} strokeWidth={1.6} />
+                    <div className="feature-icon-sculpture" aria-hidden="true">
+                      <Icon size={27} strokeWidth={1.6} />
+                    </div>
                     <span>{number} /</span>
                   </div>
                   <h3>{title}</h3>
@@ -250,7 +254,12 @@ export default async function Home() {
               },
             ].map(({ icon: Icon, title, text }, index) => (
               <article key={title} data-reveal data-reveal-delay={index * 60}>
-                <Icon size={25} strokeWidth={1.6} />
+                <div
+                  className="feature-icon-sculpture role-icon-sculpture"
+                  aria-hidden="true"
+                >
+                  <Icon size={25} strokeWidth={1.6} />
+                </div>
                 <h3>{title}</h3>
                 <p>{text}</p>
               </article>
@@ -259,7 +268,7 @@ export default async function Home() {
         </section>
         <section className="marketing-container">
           <div className="marketing-final" data-reveal>
-            <BrandMark className="h-14 w-14" />
+            <BrandSculpture />
             <span className="marketing-eyebrow">THE TEAM STARTS HERE</span>
             <h2>
               Make your next

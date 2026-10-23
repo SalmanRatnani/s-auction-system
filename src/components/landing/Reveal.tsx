@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /** Content stays visible without JavaScript or observer support. */
 export function Reveal({
@@ -11,6 +11,7 @@ export function Reveal({
   className?: string;
 }) {
   const root = useRef<HTMLDivElement>(null);
+  const [interacted, setInteracted] = useState(false);
   useEffect(() => {
     const node = root.current;
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -85,7 +86,13 @@ export function Reveal({
     };
   }, []);
   return (
-    <div ref={root} className={className}>
+    <div
+      ref={root}
+      className={className}
+      data-interacted={interacted}
+      // Permanently finish hero entrances after focus, so blur cannot replay them.
+      onFocusCapture={() => setInteracted(true)}
+    >
       {children}
     </div>
   );

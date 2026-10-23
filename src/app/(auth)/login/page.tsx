@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/branding/Logo";
+import { BrandSculpture } from "@/components/branding/BrandSculpture";
 
 type Mode = "signin" | "signup" | "magic" | "otp";
 
@@ -164,6 +165,7 @@ function LoginForm() {
       <section className="auth-story" aria-label="Welcome to S Auction">
         <Logo href="/" />
         <div>
+          <BrandSculpture className="auth-brand-sculpture" />
           <span className="marketing-eyebrow">THE TEAM STARTS HERE</span>
           <h2 className="mt-7">
             YOUR TEAM.
