@@ -16,6 +16,7 @@ import { Logo } from "@/components/branding/Logo";
 import { BrandSculpture } from "@/components/branding/BrandSculpture";
 import { AuctionPreview } from "@/components/landing/AuctionPreview";
 import { Reveal } from "@/components/landing/Reveal";
+import { MarketingHeader } from "@/components/landing/MarketingHeader";
 import { ArenaScene } from "@/components/three/ArenaScene";
 
 const features = [
@@ -59,19 +60,7 @@ export default async function Home() {
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
-      <header className="marketing-header">
-        <div className="marketing-container marketing-nav">
-          <Logo href="/" />
-          <nav aria-label="Main navigation">
-            <a href="#experience">Experience</a>
-            <a href="#how-it-works">How it works</a>
-            <a href="#roles">For your team</a>
-          </nav>
-          <Link href="/login" className="marketing-signin">
-            Sign in <ArrowUpRight size={17} />
-          </Link>
-        </div>
-      </header>
+      <MarketingHeader />
       <main id="main-content">
         <section className="marketing-container hero-grid">
           <div className="hero-copy">

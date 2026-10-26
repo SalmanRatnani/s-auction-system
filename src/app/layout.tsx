@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { themeBootstrap } from "@/components/theme/theme";
 
 export const metadata: Metadata = {
   title: "S Auction — The team starts here",
@@ -38,7 +40,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#101820",
+  themeColor: "#f3f4ee",
   width: "device-width",
   initialScale: 1,
 };
@@ -49,8 +51,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="antialiased">{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          id="theme-bootstrap"
+          dangerouslySetInnerHTML={{ __html: themeBootstrap }}
+        />
+      </head>
+      <body className="antialiased">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

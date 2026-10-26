@@ -1,5 +1,6 @@
 "use client";
 
+import { ThemePicker } from "@/components/theme/ThemePicker";
 import { RoleBadge } from "@/components/layout/RoleBadge";
 import { SoundToggle } from "@/components/layout/SoundToggle";
 import { UserMenu } from "@/components/layout/UserMenu";
@@ -35,6 +36,7 @@ export function Topbar({
         <RoleBadge role={role} />
       </div>
       <div className="flex items-center gap-2">
+        <ThemePicker />
         <SoundToggle />
         <UserMenu role={role} displayName={displayName} email={email} />
       </div>

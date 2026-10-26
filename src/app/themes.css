@@ -1,0 +1,280 @@
+/* Shared semantic colors: bright accents for surfaces, darker accents for light-mode text. */
+:root {
+  color-scheme: light;
+  --bg-0: #f3f4ee;
+  --bg-1: #ffffff;
+  --bg-2: #e9ede3;
+  --bg-3: #dce3d4;
+  --fg-1: #172120;
+  --fg-2: #45564f;
+  --fg-3: #53645d;
+  --fg-4: #65736b;
+  --line-1: #17212016;
+  --line-2: #17212026;
+  --line-3: #17212045;
+  --accent: #4b650c;
+  --accent-hover: #344b05;
+  --accent-solid: #d5f65b;
+  --accent-solid-hover: #e3ff8b;
+  --accent-ink: #142009;
+  --accent-bg: #6c8f0d0c;
+  --accent-line: #627f1c45;
+  --success: #17744b;
+  --success-bg: #17744b0e;
+  --success-line: #17744b40;
+  --danger: #b72b35;
+  --danger-solid: #b72b35;
+  --danger-bg: #b72b350d;
+  --danger-line: #b72b3540;
+  --warning: #805500;
+  --warning-bg: #a76b000d;
+  --warning-line: #a76b0040;
+  --info: #245fa7;
+  --info-bg: #245fa70d;
+  --info-line: #245fa740;
+  --role-auctioneer: #6b42b5;
+  --role-auctioneer-bg: #6b42b512;
+  --role-auctioneer-line: #6b42b540;
+  --header-glass: #f3f4eef2;
+  --primary-surface: #172120;
+  --primary-ink: #f5f7ef;
+  --primary-hover: #344535;
+  --hero-accent: #172120;
+  --hero-underline: #d5f65b;
+  --hero-glow: #d5f65b42;
+  --hero-glow-outer: #e6edcf35;
+  --scene-border: #82996326;
+  --scene-control: #f3f4eeda;
+  --scene-control-hover: #e1edbc;
+  --preview-surface: #101b27;
+  --preview-line: #293b49;
+  --preview-depth:
+    0 7px 0 -3px #263c3b, 0 14px 0 -7px #a6b49a, 0 28px 50px #15252220;
+  --workflow-surface: #14221e;
+  --auth-surface: linear-gradient(#d5f65b, #d5f65b);
+  --banner-surface: linear-gradient(115deg, #e5edce, #e3ebe6);
+  --portrait-surface: #dfe8d2;
+  --bid-surface: #e9efdf;
+  --tile-surface: linear-gradient(140deg, #f5ffd5, #d5f65b 85%);
+  --tile-ink: #263b25;
+  --tile-border: #667d3a30;
+  --tile-shadow:
+    -4px 5px 0 #a4bc5e, -7px 9px 0 #ced9b5, -9px 17px 22px #17361e14;
+  --role-tile-surface: linear-gradient(140deg, #fffef4, #edf3df);
+  --role-tile-shadow:
+    -3px 4px 0 #bec9aa, -6px 8px 0 #d6dec8, -8px 12px 17px #17361e12;
+  --ambient-glow: #b8d3760a;
+  --elevation: 0 16px 48px #14210918;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-0: #070907;
+  --bg-1: #10140e;
+  --bg-2: #181e13;
+  --bg-3: #242d1b;
+  --fg-1: #f1f5eb;
+  --fg-2: #c2cbb7;
+  --fg-3: #a2af94;
+  --fg-4: #91a183;
+  --line-1: #d6f8a612;
+  --line-2: #d6f8a622;
+  --line-3: #d6f8a645;
+  --accent: #c6ff3a;
+  --accent-hover: #d6ff72;
+  --accent-solid: #c6ff3a;
+  --accent-solid-hover: #d6ff72;
+  --accent-ink: #101704;
+  --accent-bg: #c6ff3a0d;
+  --accent-line: #c6ff3a42;
+  --success: #65eab1;
+  --success-bg: #65eab110;
+  --success-line: #65eab140;
+  --danger: #ff8d95;
+  --danger-solid: #b52b39;
+  --danger-bg: #ff8d9510;
+  --danger-line: #ff8d9540;
+  --warning: #efcc70;
+  --warning-bg: #efcc7010;
+  --warning-line: #efcc7040;
+  --info: #8bc6ff;
+  --info-bg: #8bc6ff10;
+  --info-line: #8bc6ff40;
+  --role-auctioneer: #d2b9ff;
+  --role-auctioneer-bg: #d2b9ff12;
+  --role-auctioneer-line: #d2b9ff40;
+  --header-glass: #070907eb;
+  --primary-surface: #c6ff3a;
+  --primary-ink: #101704;
+  --primary-hover: #d6ff72;
+  --hero-accent: #c6ff3a;
+  --hero-underline: #c6ff3a1a;
+  --hero-glow: #c6ff3a21;
+  --hero-glow-outer: #547e0d0c;
+  --scene-border: #c6ff3a26;
+  --scene-control: #11170de8;
+  --scene-control-hover: #233214;
+  --preview-surface: #0e130b;
+  --preview-line: #c6ff3a3a;
+  --preview-depth:
+    0 7px 0 -3px #1d2a10, 0 14px 0 -7px #34471d, 0 28px 60px #0008,
+    0 0 50px #c6ff3a06;
+  --workflow-surface: #0d120a;
+  --auth-surface:
+    radial-gradient(ellipse at 20% 25%, #c6ff3a16, transparent 70%),
+    linear-gradient(#0e140a, #070907);
+  --banner-surface: linear-gradient(115deg, #202c12, #10170c);
+  --portrait-surface: #18240f;
+  --bid-surface: #131d0c;
+  --tile-surface: linear-gradient(140deg, #26351a, #11190b 85%);
+  --tile-ink: #c6ff3a;
+  --tile-border: #c6ff3a54;
+  --tile-shadow:
+    -4px 5px 0 #0b1007, -7px 9px 0 #354b1f, -9px 17px 25px #c6ff3a0c;
+  --role-tile-surface: linear-gradient(140deg, #253018, #151e0c);
+  --role-tile-shadow:
+    -3px 4px 0 #0b1007, -6px 8px 0 #2d3d1c, -8px 12px 20px #c6ff3a08;
+  --ambient-glow: #c6ff3a08;
+  --elevation: 0 16px 48px #0007;
+}
+
+.theme-picker {
+  position: relative;
+  flex-shrink: 0;
+}
+.theme-toggle,
+.marketing-menu-toggle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line-3);
+  border-radius: 9px;
+  color: var(--fg-2);
+  background: transparent;
+  list-style: none;
+  transition:
+    color 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+.theme-toggle::-webkit-details-marker {
+  display: none;
+}
+.theme-toggle:hover,
+.theme-picker[open] .theme-toggle,
+.marketing-menu-toggle:hover {
+  color: var(--accent);
+  background: var(--accent-bg);
+  border-color: var(--accent-line);
+}
+.theme-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 90;
+  width: 235px;
+  padding: 10px;
+  border: 1px solid var(--line-3);
+  border-radius: 14px;
+  background: var(--bg-1);
+  color: var(--fg-1);
+  box-shadow: var(--elevation);
+  animation: theme-menu-in 180ms var(--ease-out);
+}
+.theme-menu-label {
+  display: block;
+  padding: 8px 8px 12px;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--fg-3);
+}
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  text-align: left;
+}
+.theme-option > span {
+  flex: 1;
+}
+.theme-option strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 650;
+}
+.theme-option small {
+  display: block;
+  font-size: 10px;
+  color: var(--fg-3);
+  margin-top: 3px;
+}
+.theme-option:hover {
+  background: var(--bg-2);
+}
+.theme-option[aria-pressed="true"] {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: var(--accent-line);
+}
+.auth-theme-control {
+  position: absolute;
+  top: 22px;
+  right: 24px;
+  z-index: 50;
+}
+
+@keyframes theme-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes theme-orbit {
+  from {
+    transform: rotate(-40deg) scale(0.8);
+  }
+  to {
+    transform: none;
+  }
+}
+:root[data-theme-transition] .theme-toggle > svg {
+  animation: theme-orbit 380ms var(--ease-out);
+}
+:root[data-theme-transition]
+  :is(
+    body,
+    .marketing-page,
+    .marketing-header,
+    .auth-layout,
+    .auth-story,
+    .app-shell,
+    .app-sidebar,
+    .app-topbar,
+    .player-spotlight,
+    .player-bid,
+    .player-portrait,
+    .stat-tile,
+    .surface-lift,
+    .demo-control-panel,
+    .roles-grid article,
+    h1,
+    h2,
+    h3
+  ) {
+  transition:
+    background-color 320ms ease,
+    color 320ms ease,
+    border-color 320ms ease,
+    box-shadow 320ms ease;
+}
