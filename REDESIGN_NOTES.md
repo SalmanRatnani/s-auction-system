@@ -1,6 +1,6 @@
 # S Auction redesign
 
-This update gives the existing auction system a navy, lime and off-white visual identity. It retains the existing Supabase backend, role permissions and virtual-credit auction rules.
+The auction system pairs a navy, lime and off-white light theme with a black and neon-lime dark theme. It retains the existing Supabase backend, role permissions and virtual-credit auction rules.
 
 ## Experience
 
@@ -11,6 +11,17 @@ This update gives the existing auction system a navy, lime and off-white visual 
 - Mobile layouts, visible keyboard focus, a native dialog navigation drawer, accessible form labels, reduced-motion support and broken-image fallbacks.
 - Inline custom bids, purse-aware bid controls, duplicate-submit guards and recoverable connection errors. Existing server/database validation remains authoritative.
 - Self-hosted Inter fonts with their SIL Open Font License in `public/fonts/OFL.txt`.
+
+## Light and black-neon themes
+
+- Light, Dark and System choices are available from the homepage, demo, sign-in screen and workspace header. The preference survives reloads, follows device changes in System mode and synchronizes across open tabs. Storage restrictions fall back to an in-memory preference.
+- A fixed script applies the stored or system preference before the first paint. Shared semantic colors cover surfaces, forms, text, status messages, player panels and navigation. Light-mode text uses darker accent colors while primary buttons retain bright lime surfaces.
+- The dark homepage adds neon typography, a subtle court grid, illuminated dimensional icons, restrained button glows and a single entrance sweep along the sample auction card. Theme changes have a brief color transition and icon rotation; they preserve the existing React child tree and current bids.
+- The sticky header shows reading progress and the active section. Mobile navigation uses a compact animated disclosure with Escape, outside-click and focus-leave dismissal. Theme controls and navigation retain visible keyboard focus and reduced-motion overrides.
+
+Desktop dark-theme preview with the static WebGL fallback:
+
+![Black and neon homepage](docs/previews/neon-homepage.jpg)
 
 ## Motion and interaction polish
 
@@ -44,6 +55,7 @@ Desktop browser review with WebGL disabled (the SVG fallback is shown):
 - Remove internal captain account IDs from unauthenticated spectator snapshots.
 - Add response headers for framing, MIME sniffing, referrers and browser permissions, plus production HSTS and private API caching. The CSP is a baseline for objects, base URLs and framing; it is not a comprehensive script policy.
 - Update Next.js and its ESLint configuration to 16.4.3, retaining sharp 0.35.5 and the patched transitive source-map dependency. The framework update addresses the dependency audit findings for [image optimization](https://github.com/vercel/next.js/security/advisories/GHSA-2464-fhr4-w9xw), [Server Actions](https://github.com/vercel/next.js/security/advisories/GHSA-p3m5-59mp-jv5r) and [typed arrays in cached functions](https://github.com/vercel/next.js/security/advisories/GHSA-673q-mjm6-r5xr). These advisories were flagged during the motion update's CI run on 23 October 2026.
+- Remove the unused direct Zod dependency from the production dependency graph after the audit flagged [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5). Application code has no Zod imports or schemas. Zod remains a development-only transitive dependency of the lint tooling; this is a runtime dependency cleanup, not a claim that all development dependencies are vulnerability-free.
 
 ## Verification and release
 
@@ -58,6 +70,8 @@ npm run build
 ```
 
 The eight Node tests cover the existing CSV/signature/identifier helpers and the added origin, redirect, streamed-body and image validation protections. The quality workflow also builds the application.
+
+The theme update passed the production build, TypeScript check, eight Node tests and production dependency audit (zero findings). Desktop browser checks covered both palettes on the homepage, demo and sign-in screen, persistence on reload/navigation, cross-tab synchronization, unchanged sample bids when switching themes, keyboard dismissal/focus restoration, active-section navigation and page-width overflow. The supplied browser had WebGL disabled and did not expose a mobile viewport or OS preference emulator, so GPU rendering, physical mobile layouts and runtime OS/reduced-motion changes still need device review. The repository has no ESLint flat configuration, so `npm run lint` is not a passing validation step.
 
 For the 3D hero, check Play/Pause, changing reduced-motion preferences, scrolling off-screen, switching tabs and navigating away on a WebGL-enabled desktop and phone. Also check the static illustration with WebGL disabled. A successful build verifies the code and bundle, but does not verify GPU rendering or device frame rates.
 

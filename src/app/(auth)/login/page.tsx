@@ -8,6 +8,7 @@ import { safeRedirectPath } from "@/lib/security/request";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ThemePicker } from "@/components/theme/ThemePicker";
 import { Logo } from "@/components/branding/Logo";
 import { BrandSculpture } from "@/components/branding/BrandSculpture";
 
@@ -162,6 +163,9 @@ function LoginForm() {
 
   return (
     <main className="auth-layout">
+      <div className="auth-theme-control">
+        <ThemePicker />
+      </div>
       <section className="auth-story" aria-label="Welcome to S Auction">
         <Logo href="/" />
         <div>
@@ -172,7 +176,7 @@ function LoginForm() {
             <br />
             YOUR CALL.
             <br />
-            YOUR ARENA.
+            <span>YOUR ARENA.</span>
           </h2>
           <p>
             Every great squad starts with a decision. Make yours from a

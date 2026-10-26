@@ -2,6 +2,7 @@
 import { useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { ArrowUpRight, RotateCcw, Check, Gavel, Info } from "lucide-react";
+import { ThemePicker } from "@/components/theme/ThemePicker";
 import { Logo } from "@/components/branding/Logo";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
 import { TeamLogo } from "@/components/branding/TeamLogo";
@@ -56,9 +57,12 @@ export function DemoRoom() {
     <div className="demo-shell space-y-7">
       <header className="flex items-center justify-between gap-4">
         <Logo href="/" />
-        <Link href="/login" className="arena-button">
-          Sign in <ArrowUpRight size={17} />
-        </Link>
+        <div className="flex items-center gap-2">
+          <ThemePicker />
+          <Link href="/login" className="arena-button">
+            Sign in <ArrowUpRight size={17} />
+          </Link>
+        </div>
       </header>
       <div className="flex gap-3 rounded-lg border border-[var(--accent-line)] bg-[var(--accent-bg)] p-4">
         <Info size={18} className="text-[var(--accent)] shrink-0" />
