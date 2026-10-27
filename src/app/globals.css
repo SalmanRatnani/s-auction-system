@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./themes.css";
+@import "./experience.css";
 
 /* Self-hosted Inter, SIL Open Font License; no runtime font-provider request. */
 @font-face {

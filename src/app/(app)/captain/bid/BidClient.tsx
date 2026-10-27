@@ -8,6 +8,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
 import { SoldCelebration } from "@/components/auction/SoldCelebration";
 import { AnimatedAmount } from "@/components/ui/animated-amount";
+import { PurseMeter } from "@/components/auction/PurseMeter";
 import {
   getBasePrice,
   getIncrement,
@@ -218,6 +219,15 @@ export function BidClient({
               {myTeam.squad_count}/{maxSquad} players · Virtual credits
               available to bid: {formatINR(availableToBid, { compact: true })}
             </div>
+            <PurseMeter
+              available={availableToBid}
+              total={Math.max(
+                myTeam.initial_purse,
+                myTeam.remaining_purse,
+                myTeam.remaining_purse + myTeam.spent,
+              )}
+              label="Available after captain reserves"
+            />
           </div>
         )}
       </header>
