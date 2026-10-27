@@ -4,10 +4,8 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
-  Gavel,
   Monitor,
   ShieldCheck,
-  Users,
   Wallet,
   Zap,
 } from "lucide-react";
@@ -17,6 +15,7 @@ import { BrandSculpture } from "@/components/branding/BrandSculpture";
 import { AuctionPreview } from "@/components/landing/AuctionPreview";
 import { Reveal } from "@/components/landing/Reveal";
 import { MarketingHeader } from "@/components/landing/MarketingHeader";
+import { RoleShowcase } from "@/components/landing/RoleShowcase";
 import { ArenaScene } from "@/components/three/ArenaScene";
 
 const features = [
@@ -219,41 +218,7 @@ export default async function Home() {
               keep each person focused.
             </p>
           </div>
-          <div className="roles-grid">
-            {[
-              {
-                icon: ShieldCheck,
-                title: "Organizers",
-                text: "Prepare the event. Manage access. Keep the whole picture in view.",
-              },
-              {
-                icon: Gavel,
-                title: "Auctioneers",
-                text: "Control the pace, draw the next player and make the final call.",
-              },
-              {
-                icon: Users,
-                title: "Captains",
-                text: "Follow your purse, place your bid and shape your winning squad.",
-              },
-              {
-                icon: Monitor,
-                title: "Spectators",
-                text: "Watch every moment unfold from a live link or the venue screen.",
-              },
-            ].map(({ icon: Icon, title, text }, index) => (
-              <article key={title} data-reveal data-reveal-delay={index * 60}>
-                <div
-                  className="feature-icon-sculpture role-icon-sculpture"
-                  aria-hidden="true"
-                >
-                  <Icon size={25} strokeWidth={1.6} />
-                </div>
-                <h3>{title}</h3>
-                <p>{text}</p>
-              </article>
-            ))}
-          </div>
+          <RoleShowcase />
         </section>
         <section className="marketing-container">
           <div className="marketing-final" data-reveal>

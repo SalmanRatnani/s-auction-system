@@ -23,6 +23,14 @@ Desktop dark-theme preview with the static WebGL fallback:
 
 ![Black and neon homepage](docs/previews/neon-homepage.jpg)
 
+## Navigation and interactive auction experience
+
+- Searchable quick navigation opens from the workspace header or Ctrl/Cmd+K. Results come from the existing navigation for the signed-in role. The native modal supports arrow keys, Enter, Escape, focus restoration, backdrop dismissal and scroll containment. It navigates only; it does not perform auction actions.
+- The homepage now has a keyboard-accessible role showcase with dimensional sample workspace cards. Links open the appropriate Captain, Auctioneer or Spectator demo perspective; sample figures are explicitly labelled.
+- The demo adds a room activity timeline, bidding stages, pause/resume controls, a confirmed-sale panel, the existing dismissible sale celebration and animated purse meters. The activity list retains the latest eight actions. The opening sample bid now equals the base price, subsequent bids use the increment, and purses change only after a sale.
+- A pure reducer guards repeated bids, invalid sales, paused/sold states and the sample purse limit. Four regression tests cover these transitions and reset behavior. Demo actions remain entirely in browser memory; no production data or backend rules are modified.
+- Captains also receive a visual meter for their existing available-to-bid amount after captain reserves. Its budget reference accommodates purse top-ups; exact currency values still render immediately. New animation is finite and covered by the shared reduced-motion override.
+
 ## Motion and interaction polish
 
 - Coordinated hero and illustration entrances, one-time scroll reveals, animated navigation underlines and restrained button/arrow feedback. Scroll content is visible without JavaScript; already-visible content is not hidden after hydration.
@@ -69,7 +77,9 @@ npm audit --omit=dev --audit-level=high
 npm run build
 ```
 
-The eight Node tests cover the existing CSV/signature/identifier helpers and the added origin, redirect, streamed-body and image validation protections. The quality workflow also builds the application.
+The twelve Node tests cover the existing CSV/signature/identifier helpers, origin, redirect, streamed-body and image validation protections, plus the four demo state-transition regressions. The quality workflow also builds the application.
+
+For the navigation/interactive-demo update, local TypeScript, production build, all twelve tests and the production dependency audit passed. Local browser review was unavailable: the managed preview reported a running URL but stopped before the browser could connect. Verify the role tabs/deep links, quick-navigation focus and keyboard behavior, demo bid → pause → resume → sale → reset flow, and both palettes on desktop and phone in the hosted preview before production rollout. Authenticated navigation and the captain purse meter still need a staging account review.
 
 The theme update passed the production build, TypeScript check, eight Node tests and production dependency audit (zero findings). Desktop browser checks covered both palettes on the homepage, demo and sign-in screen, persistence on reload/navigation, cross-tab synchronization, unchanged sample bids when switching themes, keyboard dismissal/focus restoration, active-section navigation and page-width overflow. The supplied browser had WebGL disabled and did not expose a mobile viewport or OS preference emulator, so GPU rendering, physical mobile layouts and runtime OS/reduced-motion changes still need device review. The repository has no ESLint flat configuration, so `npm run lint` is not a passing validation step.
 

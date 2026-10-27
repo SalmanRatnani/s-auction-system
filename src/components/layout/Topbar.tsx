@@ -5,6 +5,7 @@ import { RoleBadge } from "@/components/layout/RoleBadge";
 import { SoundToggle } from "@/components/layout/SoundToggle";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { MobileNav } from "@/components/layout/MobileNav";
+import { QuickNavigation } from "./QuickNavigation";
 import { usePathname } from "next/navigation";
 import { NAV } from "./navigation";
 import type { Role } from "@/types/roles";
@@ -36,6 +37,12 @@ export function Topbar({
         <RoleBadge role={role} />
       </div>
       <div className="flex items-center gap-2">
+        <QuickNavigation
+          items={(NAV[role] ?? NAV.VIEWER).map((item) => ({
+            ...item,
+            id: item.href,
+          }))}
+        />
         <ThemePicker />
         <SoundToggle />
         <UserMenu role={role} displayName={displayName} email={email} />
