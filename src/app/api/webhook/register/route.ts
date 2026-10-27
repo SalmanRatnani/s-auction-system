@@ -1,3 +1,4 @@
+import { normalizePlayerImage } from "@/lib/security/image";
 import { readLimitedBody } from "@/lib/security/request";
 import {
   verifyWebhookSignature,
@@ -81,12 +82,17 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
 
   // Idempotency
-  const { data: existing } = await admin
+  const { data: existing, error: lookupError } = await admin
     .from("registrations")
     .select("id")
     .eq("google_response_id", body.responseId)
     .maybeSingle();
 
+  if (lookupError)
+    return NextResponse.json(
+      { error: "Registration lookup unavailable" },
+      { status: 503 },
+    );
   if (existing) {
     return NextResponse.json({ ok: true, id: existing.id, duplicate: true });
   }
@@ -94,10 +100,43 @@ export async function POST(request: NextRequest) {
   // Public URL for player image (from player-images bucket)
   let imageUrl: string | null = null;
   if (body.filePaths?.image?.path) {
-    const { data } = admin.storage
+    const image = body.filePaths.image;
+    const allowed = new RegExp(
+      `^20[0-9]{2}/${body.responseId}/image\\.(jpg|png|webp)$`,
+    );
+    if (image.bucket !== "player-images" || !allowed.test(image.path))
+      return NextResponse.json(
+        { error: "Image does not belong to this response" },
+        { status: 400 },
+      );
+    const { data: source, error: downloadError } = await admin.storage
       .from("player-images")
-      .getPublicUrl(body.filePaths.image.path);
-    imageUrl = data.publicUrl;
+      .download(image.path);
+    if (downloadError || !source)
+      return NextResponse.json(
+        { error: "Uploaded image is unavailable" },
+        { status: 400 },
+      );
+    try {
+      const normalized = await normalizePlayerImage(
+        new Uint8Array(await source.arrayBuffer()),
+      );
+      const path = image.path.replace(
+        /image\.(jpg|png|webp)$/,
+        "verified.webp",
+      );
+      const { error: uploadError } = await admin.storage
+        .from("player-images")
+        .upload(path, normalized, { contentType: "image/webp", upsert: true });
+      if (uploadError) throw new Error("Image processing failed");
+      imageUrl = admin.storage.from("player-images").getPublicUrl(path)
+        .data.publicUrl;
+    } catch {
+      return NextResponse.json(
+        { error: "Upload a valid still JPEG, PNG, or WebP image up to 5 MB" },
+        { status: 400 },
+      );
+    }
   }
 
   const { data, error } = await admin
@@ -129,7 +168,20 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    console.error("Insert failed", error);
+    if (error.code === "23505") {
+      const { data: existing } = await admin
+        .from("registrations")
+        .select("id")
+        .eq("google_response_id", body.responseId)
+        .maybeSingle();
+      if (existing)
+        return NextResponse.json({
+          ok: true,
+          id: existing.id,
+          duplicate: true,
+        });
+    }
+    console.error("registration_insert_failed", { code: error.code });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

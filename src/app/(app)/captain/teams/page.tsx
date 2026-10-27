@@ -1,3 +1,4 @@
+import { createAuthorizedReader } from "@/lib/security/page-access";
 import { TeamLogo } from "@/components/branding/TeamLogo";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -21,20 +22,26 @@ export default async function AllTeamsPage() {
 
 async function Inner() {
   const supabase = await createClient();
+  const reader = await createAuthorizedReader([
+    "CAPTAIN",
+    "MAIN_CONTROLLER",
+    "AUCTIONEER",
+    "VIEWER",
+  ]);
   const auction = await getOrCreateDraftAuction();
   if (!auction) return <div className="text-[var(--danger)]">No auction.</div>;
 
   const config = (auction.config ?? {}) as { maxSquad?: number };
   const maxSquad = config.maxSquad ?? 18;
 
-  const { data: teams } = await supabase
+  const { data: teams } = await reader
     .from("teams")
     .select("id, name, logo_url, captain_user_id, initial_purse, created_at")
     .eq("auction_id", auction.id)
     .order("created_at", { ascending: true });
 
   // Squad counts only — no purse
-  const { data: purses } = await supabase
+  const { data: purses } = await reader
     .from("team_purses")
     .select("team_id, squad_count")
     .eq("auction_id", auction.id);
@@ -44,7 +51,7 @@ async function Inner() {
     squadByTeam[p.team_id] = Number(p.squad_count ?? 0);
   });
 
-  const { data: rosters } = await supabase
+  const { data: rosters } = await reader
     .from("team_players")
     .select(
       `

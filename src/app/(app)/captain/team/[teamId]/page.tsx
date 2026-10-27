@@ -1,3 +1,4 @@
+import { createAuthorizedReader } from "@/lib/security/page-access";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { RoleGuard } from "@/components/guards/RoleGuard";
@@ -26,6 +27,12 @@ export default async function CaptainTeamPage({
 async function Inner({ params }: { params: Promise<{ teamId: string }> }) {
   const { teamId } = await params;
   const supabase = await createClient();
+  const reader = await createAuthorizedReader([
+    "CAPTAIN",
+    "MAIN_CONTROLLER",
+    "AUCTIONEER",
+    "VIEWER",
+  ]);
 
   const {
     data: { user },
@@ -35,47 +42,73 @@ async function Inner({ params }: { params: Promise<{ teamId: string }> }) {
   const auction = await getOrCreateDraftAuction();
   if (!auction) return <div className="text-[var(--danger)]">No auction.</div>;
 
+  const { data: profile } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+  if (profile?.role === "VIEWER") redirect(`/viewer/team/${teamId}`);
+
   // Load team
-  const teamQuery = await supabase.from("teams")
-    .select("id, name, logo_url, captain_user_id, co_captain_user_id, initial_purse")
-    .eq("id", teamId).eq("auction_id", auction.id).maybeSingle();
+  const teamQuery = await reader
+    .from("teams")
+    .select(
+      "id, name, logo_url, captain_user_id, co_captain_user_id, initial_purse",
+    )
+    .eq("id", teamId)
+    .eq("auction_id", auction.id)
+    .maybeSingle();
   const fallback = isMissingPartnerColumn(teamQuery.error)
-    ? await supabase.from("teams").select("id, name, logo_url, captain_user_id, initial_purse")
-        .eq("id", teamId).eq("auction_id", auction.id).maybeSingle()
+    ? await reader
+        .from("teams")
+        .select("id, name, logo_url, captain_user_id, initial_purse")
+        .eq("id", teamId)
+        .eq("auction_id", auction.id)
+        .maybeSingle()
     : null;
   const teamError = fallback?.error ?? (fallback ? null : teamQuery.error);
   if (teamError) throw new Error(`Could not load team: ${teamError.message}`);
-  const teamRow = fallback ? (fallback.data ? { ...fallback.data, co_captain_user_id: null } : null) : teamQuery.data;
+  const teamRow = fallback
+    ? fallback.data
+      ? { ...fallback.data, co_captain_user_id: null }
+      : null
+    : teamQuery.data;
   if (!teamRow) notFound();
 
   // Captain display name
   let captainDisplay: string | null = null;
   if (teamRow.captain_user_id) {
-    const { data: captain } = await supabase
+    const { data: captain } = await reader
       .from("users")
-      .select("display_name, email")
+      .select("display_name")
       .eq("id", teamRow.captain_user_id)
       .maybeSingle();
-    captainDisplay = captain?.display_name ?? captain?.email ?? null;
+    captainDisplay = captain?.display_name ?? null;
   }
 
   // Purse + squad count
-  const { data: purseRow } = await supabase
+  const { data: purseRow, error: purseError } = await reader
     .from("team_purses")
     .select("remaining_purse, spent, squad_count")
     .eq("team_id", teamId)
     .maybeSingle();
+  if (purseError || !purseRow)
+    throw new Error("Purse information is unavailable. Please refresh.");
 
   // Roster
-  const { data: rosterRaw } = await supabase
+  const { data: rosterRaw, error: rosterError } = await reader
     .from("team_players")
-    .select(`
+    .select(
+      `
       id, price, acquired_via, won_at,
       player:players (id, player_code, name, grade, image_url)
-    `)
+    `,
+    )
     .eq("team_id", teamId)
     .eq("auction_id", auction.id)
     .order("won_at", { ascending: true });
+  if (rosterError)
+    throw new Error("Team roster could not be loaded. Please refresh.");
 
   const roster = (rosterRaw ?? [])
     .map((r) => {
@@ -94,7 +127,9 @@ async function Inner({ params }: { params: Promise<{ teamId: string }> }) {
   const config = (auction.config ?? {}) as { maxSquad?: number };
 
   // Purse shows ONLY when viewing your own team
-  const isMyTeam = (teamRow.captain_user_id === user.id || teamRow.co_captain_user_id === user.id);
+  const isMyTeam =
+    teamRow.captain_user_id === user.id ||
+    teamRow.co_captain_user_id === user.id;
 
   const team: TeamDetailData = {
     id: teamRow.id,
@@ -112,7 +147,7 @@ async function Inner({ params }: { params: Promise<{ teamId: string }> }) {
   return (
     <TeamDetail
       team={team}
-      showPurse={isMyTeam}
+      showPurse={isMyTeam || auction.config.showPurseToCaptains !== false}
       backHref="/captain/teams"
       playerLinkBase="/player"
     />

@@ -1,3 +1,4 @@
+import { createAuthorizedReader } from "@/lib/security/page-access";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -15,9 +16,7 @@ export default async function PlayerProfilePage({
   searchParams: Promise<{ from?: string }>;
 }) {
   return (
-    <RoleGuard
-      allow={["CAPTAIN", "MAIN_CONTROLLER", "AUCTIONEER", "VIEWER"]}
-    >
+    <RoleGuard allow={["CAPTAIN", "MAIN_CONTROLLER", "AUCTIONEER", "VIEWER"]}>
       <Inner params={params} searchParams={searchParams} />
     </RoleGuard>
   );
@@ -34,12 +33,18 @@ async function Inner({
   const { from } = await searchParams;
 
   const supabase = await createClient();
+  const reader = await createAuthorizedReader([
+    "CAPTAIN",
+    "MAIN_CONTROLLER",
+    "AUCTIONEER",
+    "VIEWER",
+  ]);
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const player = await loadPlayerProfile(supabase, id);
+  const player = await loadPlayerProfile(reader, id);
   if (!player) notFound();
 
   // Choose a sensible "back" target based on the `from` query param

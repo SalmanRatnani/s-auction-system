@@ -1,3 +1,4 @@
+import { validateViewerToken } from "@/lib/security/viewer";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PlayerProfile } from "@/components/auction/PlayerProfile";
@@ -35,16 +36,14 @@ export default async function WatchPlayerPage({
       </div>
     );
   }
+  if (!(await validateViewerToken(token, link.auction_id))) notFound();
 
-  const player = await loadPlayerProfile(admin, id);
+  const player = await loadPlayerProfile(admin, id, link.auction_id);
   if (!player) notFound();
 
   return (
     <main className="min-h-screen p-4 md:p-8">
-      <PlayerProfile
-        player={player}
-        backHref={`/watch/${token}`}
-      />
+      <PlayerProfile player={player} backHref={`/watch/${token}`} />
     </main>
   );
 }

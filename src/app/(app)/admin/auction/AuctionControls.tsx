@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { sendAction, type PendingAction } from "@/lib/action-request";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Play, Square, RotateCcw, Pause, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,49 +12,65 @@ type Auction = {
   id: string;
   status: string;
   mode: string;
+  state_version: number;
 };
 
 export function AuctionControls({ auction }: { auction: Auction }) {
   const router = useRouter();
+  const pending = useRef<PendingAction | null>(null);
+  const inFlight = useRef(false);
   const [busy, setBusy] = useState<
     "start" | "end" | "reset" | "mode" | "pause" | "resume" | null
   >(null);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(
-    null
+    null,
   );
 
   async function call(action: "start" | "end" | "reset" | "pause" | "resume") {
-    if (action === "reset") {
+    if (inFlight.current) return;
+    if (action === "reset" && !pending.current) {
       const confirmed = window.confirm(
         "RESET the auction?\n\n" +
           "This deletes all bids, rosters, purse history, and auction_players rows. " +
-          "Teams and player pool are kept. Auction returns to DRAFT."
+          "Teams and player pool are kept. Auction returns to DRAFT.",
       );
       if (!confirmed) return;
     }
+    inFlight.current = true;
     setBusy(action);
     setMsg(null);
-    const res = await fetch(`/api/auction/${auction.id}/${action}`, {
-      method: "POST",
-    });
-    const body = await res.json().catch(() => ({}));
-    setBusy(null);
-    if (!res.ok) {
-      setMsg({ kind: "err", text: body.error ?? "Failed" });
-      return;
+    try {
+      const { response: res, body } = await sendAction(
+        `/api/auction/${auction.id}/${action}`,
+        { expectedVersion: auction.state_version },
+        pending,
+      );
+      if (!res.ok) {
+        setMsg({ kind: "err", text: body.error ?? "Action failed" });
+        router.refresh();
+        return;
+      }
+      const text =
+        action === "start"
+          ? `Auction started. Seeded ${body.seeded ?? 0} players.`
+          : action === "end"
+            ? "Auction ended."
+            : action === "reset"
+              ? "Auction reset to DRAFT."
+              : action === "pause"
+                ? "Auction paused."
+                : "Auction resumed.";
+      setMsg({ kind: "ok", text });
+      router.refresh();
+    } catch {
+      setMsg({
+        kind: "err",
+        text: "Confirmation interrupted. Retry the same action to retrieve its result safely.",
+      });
+    } finally {
+      inFlight.current = false;
+      setBusy(null);
     }
-    const text =
-      action === "start"
-        ? `Auction started. Seeded ${body.seeded ?? 0} players.`
-        : action === "end"
-        ? "Auction ended."
-        : action === "reset"
-        ? "Auction reset to DRAFT."
-        : action === "pause"
-        ? "Auction paused."
-        : "Auction resumed.";
-    setMsg({ kind: "ok", text });
-    router.refresh();
   }
 
   async function toggleMode() {
@@ -62,7 +79,7 @@ export function AuctionControls({ auction }: { auction: Auction }) {
       const ok = window.confirm(
         "Switch to LIVE mode?\n\n" +
           "Use this only when you're ready for the real auction. " +
-          "You can switch back, but any real progress you make is on you."
+          "You can switch back, but any real progress you make is on you.",
       );
       if (!ok) return;
     }
@@ -83,7 +100,7 @@ export function AuctionControls({ auction }: { auction: Auction }) {
     router.refresh();
   }
 
-  const isDraft = auction.status === "DRAFT" || auction.status === "ENDED";
+  const isDraft = auction.status === "DRAFT";
   const isLive = auction.status === "LIVE";
   const isPaused = auction.status === "PAUSED";
   const isDryRun = auction.mode === "DRY_RUN";
@@ -91,7 +108,9 @@ export function AuctionControls({ auction }: { auction: Auction }) {
   return (
     <Card
       className={
-        isDryRun ? "border-[var(--warning-line)]" : "border-[var(--danger-line)]"
+        isDryRun
+          ? "border-[var(--warning-line)]"
+          : "border-[var(--danger-line)]"
       }
     >
       <CardHeader>
@@ -103,6 +122,28 @@ export function AuctionControls({ auction }: { auction: Auction }) {
         </div>
       </CardHeader>
       <CardBody className="space-y-4">
+        {pending.current && !busy && (
+          <div role="alert" className="text-sm text-[var(--warning)]">
+            Previous action awaiting confirmation.
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-3"
+              onClick={() =>
+                void call(
+                  pending.current!.url.split("/").pop() as
+                    | "start"
+                    | "end"
+                    | "reset"
+                    | "pause"
+                    | "resume",
+                )
+              }
+            >
+              Confirm previous action
+            </Button>
+          </div>
+        )}
         <div className="flex flex-wrap gap-2">
           <Button
             onClick={() => call("start")}
@@ -151,7 +192,7 @@ export function AuctionControls({ auction }: { auction: Auction }) {
             variant="danger"
             onClick={() => call("reset")}
             loading={busy === "reset"}
-            disabled={busy !== null}
+            disabled={busy !== null || !isDryRun || (!isDraft && !isPaused)}
             size="sm"
           >
             <RotateCcw size={13} strokeWidth={2} />
@@ -176,7 +217,7 @@ export function AuctionControls({ auction }: { auction: Auction }) {
               size="sm"
               onClick={toggleMode}
               loading={busy === "mode"}
-              disabled={busy !== null || isLive}
+              disabled={busy !== null || !isDraft}
             >
               <RefreshCw size={13} strokeWidth={2} />
               {isDryRun ? "Switch to LIVE" : "Switch to DRY RUN"}
@@ -184,7 +225,7 @@ export function AuctionControls({ auction }: { auction: Auction }) {
           </div>
           <p className="text-[12px] text-[var(--fg-4)] mt-2 leading-relaxed">
             {isDryRun
-              ? "Rehearsal mode. Nothing counts. Run a full rehearsal, then Reset and switch to LIVE for the real event."
+              ? "Rehearsal mode. Nothing counts. Pause a rehearsal to reset it. Completed events stay archived."
               : "Real event. Bids, sales, and purses are final."}
           </p>
         </div>

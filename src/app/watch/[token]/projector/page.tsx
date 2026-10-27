@@ -1,3 +1,4 @@
+import { validateViewerToken } from "@/lib/security/viewer";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ProjectorView } from "@/components/auction/ProjectorView";
@@ -25,15 +26,22 @@ export default async function WatchProjectorPage({
       <div className="min-h-screen grid place-items-center">
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">Link expired</h1>
-          <p className="text-white/60 text-sm">Ask the auctioneer for a new link.</p>
+          <p className="text-[var(--fg-3)] text-sm">
+            Ask the auctioneer for a new link.
+          </p>
         </div>
       </div>
     );
   }
+  if (!(await validateViewerToken(token, link.auction_id))) notFound();
 
   return (
     <main className="min-h-screen">
-      <ProjectorView auctionId={link.auction_id} showPurse={false} viewerToken={token} />
+      <ProjectorView
+        auctionId={link.auction_id}
+        showPurse={false}
+        viewerToken={token}
+      />
     </main>
   );
 }

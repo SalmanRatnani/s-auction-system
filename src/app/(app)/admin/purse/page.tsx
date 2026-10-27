@@ -1,3 +1,4 @@
+import { createAuthorizedReader } from "@/lib/security/page-access";
 import { createClient } from "@/lib/supabase/server";
 import { RoleGuard } from "@/components/guards/RoleGuard";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,19 +18,29 @@ export default async function PursePage() {
 
 async function Inner() {
   const supabase = await createClient();
+  const reader = await createAuthorizedReader(["MAIN_CONTROLLER"]);
   const auction = await getOrCreateDraftAuction();
   if (!auction) return <div className="text-[var(--danger)]">No auction.</div>;
 
-  const { data: teams } = await supabase
+  const { data: teams, error: teamError } = await reader
     .from("teams")
     .select("id, name, logo_url, initial_purse, captain_user_id")
     .eq("auction_id", auction.id)
     .order("created_at", { ascending: true });
 
-  const { data: purses } = await supabase
+  const { data: purses, error: purseError } = await reader
     .from("team_purses")
     .select("team_id, remaining_purse, spent, squad_count")
     .eq("auction_id", auction.id);
+
+  if (
+    teamError ||
+    purseError ||
+    !teams ||
+    !purses ||
+    teams.some((t) => !purses.some((p) => p.team_id === t.id))
+  )
+    throw new Error("Purse information is unavailable. Please refresh.");
 
   const purseMap: Record<
     string,
@@ -43,15 +54,16 @@ async function Inner() {
     };
   });
 
-  const { data: ledger } = await supabase
+  const { data: ledger, error: ledgerError } = await reader
     .from("purse_ledger")
     .select("id, team_id, delta, reason, created_at")
     .eq("auction_id", auction.id)
     .order("created_at", { ascending: false })
     .limit(30);
 
-  const teamName = (id: string) =>
-    teams?.find((t) => t.id === id)?.name ?? "—";
+  if (ledgerError) throw new Error("Purse history could not be loaded");
+
+  const teamName = (id: string) => teams?.find((t) => t.id === id)?.name ?? "—";
 
   return (
     <div className="space-y-6 max-w-5xl animate-fade-up">

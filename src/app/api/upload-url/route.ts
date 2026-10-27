@@ -62,6 +62,21 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient();
+  const { data: registered, error: lookupError } = await admin
+    .from("registrations")
+    .select("id")
+    .eq("google_response_id", body.responseId)
+    .maybeSingle();
+  if (lookupError)
+    return NextResponse.json(
+      { error: "Registration lookup unavailable" },
+      { status: 503 },
+    );
+  if (registered)
+    return NextResponse.json(
+      { error: "This response is already registered" },
+      { status: 409 },
+    );
   const year = new Date().getFullYear();
   const uploads = [];
 

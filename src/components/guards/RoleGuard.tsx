@@ -16,7 +16,13 @@ export async function RoleGuard({
 
   if (!user) redirect("/login");
 
-  const role = (user.app_metadata?.role ?? "VIEWER") as Role;
+  const { data: profile, error } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+  if (error || !profile) redirect("/login");
+  const role = profile.role as Role;
   if (!allow.includes(role)) {
     redirect(ROLE_HOME[role] ?? "/dashboard");
   }

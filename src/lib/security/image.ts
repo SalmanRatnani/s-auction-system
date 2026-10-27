@@ -2,9 +2,15 @@ import sharp from "sharp";
 
 export const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 /** Decode and re-encode uploaded images: reject spoofed types and strip metadata. */
-export async function normalizeTeamLogo(input: Uint8Array): Promise<Buffer> {
-  if (!input.length || input.length > MAX_LOGO_BYTES)
-    throw new Error("Logo must be between 1 byte and 2 MB");
+async function normalizeImage(
+  input: Uint8Array,
+  maxBytes: number,
+  dimension: number,
+): Promise<Buffer> {
+  if (!input.length || input.length > maxBytes)
+    throw new Error(
+      `Image must be between 1 byte and ${maxBytes / 1024 / 1024} MB`,
+    );
   // Reject active formats before asking an image decoder to inspect the file.
   const bytes = Buffer.from(input.buffer, input.byteOffset, input.byteLength);
   const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
@@ -30,7 +36,12 @@ export async function normalizeTeamLogo(input: Uint8Array): Promise<Buffer> {
   }
   return image
     .rotate()
-    .resize(512, 512, { fit: "inside", withoutEnlargement: true })
+    .resize(dimension, dimension, { fit: "inside", withoutEnlargement: true })
     .webp({ quality: 88 })
     .toBuffer();
 }
+
+export const normalizeTeamLogo = (input: Uint8Array) =>
+  normalizeImage(input, MAX_LOGO_BYTES, 512);
+export const normalizePlayerImage = (input: Uint8Array) =>
+  normalizeImage(input, 5 * 1024 * 1024, 1200);

@@ -21,6 +21,7 @@ export type AuctionStateResponse = {
     status: string;
     mode: string;
     config: Record<string, unknown>;
+    state_version: number;
   } | null;
   current: {
     id: string;
@@ -55,6 +56,9 @@ export type AuctionStateResponse = {
     captain_user_id: string | null;
     co_captain_user_id: string | null;
     initial_purse: number;
+    purse_visible?: boolean;
+    captain_settlement_estimate?: number;
+    captain_settlement_shortfall?: number;
     remaining_purse: number;
     spent: number;
     squad_count: number;
@@ -77,29 +81,50 @@ type BidUpdate = {
  * Bids use the Realtime payload directly; no HTTP round trip is needed to
  * show a new leader. Full snapshots still reconcile sales, undo and purses.
  */
-export function useAuctionState(auctionId: string, pollMs = 2500, viewerToken?: string) {
+export function useAuctionState(
+  auctionId: string,
+  pollMs = 2500,
+  viewerToken?: string,
+) {
   const [state, setState] = useState<AuctionStateResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
+  const [stale, setStale] = useState(true);
+  const lastSuccess = useRef(0);
+  const failures = useRef(0);
+  const generation = useRef(0);
+  const controller = useRef<AbortController | null>(null);
   const inFlightRef = useRef(false);
   const needsRefreshRef = useRef(false);
   const requestSequenceRef = useRef(0);
   const recentBidRef = useRef<BidUpdate | null>(null);
 
   const applyBid = useCallback((bid: BidUpdate) => {
-    if (!bid?.id || !bid.auction_player_id || !bid.team_id ||
-        !Number.isSafeInteger(Number(bid.amount)) || bid.is_undone) return;
+    if (
+      !bid?.id ||
+      !bid.auction_player_id ||
+      !bid.team_id ||
+      !Number.isSafeInteger(Number(bid.amount)) ||
+      bid.is_undone
+    )
+      return;
 
     const normalized: BidUpdate = { ...bid, amount: Number(bid.amount) };
     recentBidRef.current = normalized;
     requestSequenceRef.current += 1;
 
     setState((previous) => {
-      if (!previous || previous.current?.id !== normalized.auction_player_id) return previous;
+      if (!previous || previous.current?.id !== normalized.auction_player_id)
+        return previous;
       const leader = previous.highestBid;
       if (leader && leader.amount > normalized.amount) return previous;
-      if (leader && leader.amount === normalized.amount &&
-          new Date(leader.created_at).getTime() <= new Date(normalized.created_at).getTime()) return previous;
+      if (
+        leader &&
+        leader.amount === normalized.amount &&
+        new Date(leader.created_at).getTime() <=
+          new Date(normalized.created_at).getTime()
+      )
+        return previous;
       return {
         ...previous,
         highestBid: {
@@ -113,39 +138,67 @@ export function useAuctionState(auctionId: string, pollMs = 2500, viewerToken?: 
   }, []);
 
   const refresh = useCallback(async () => {
+    if (document.visibilityState === "hidden") return;
     if (inFlightRef.current) {
       needsRefreshRef.current = true;
       return;
     }
     inFlightRef.current = true;
     const requestSequence = requestSequenceRef.current;
+    const requestGeneration = generation.current;
+    const abort = new AbortController();
+    controller.current = abort;
+    const timeout = setTimeout(() => abort.abort(), 8000);
     try {
-      const suffix = viewerToken ? `?viewerToken=${encodeURIComponent(viewerToken)}` : "";
+      const suffix = viewerToken
+        ? `?viewerToken=${encodeURIComponent(viewerToken)}`
+        : "";
       const response = await fetch(`/api/auction/${auctionId}/state${suffix}`, {
         cache: "no-store",
+        signal: abort.signal,
       });
-      if (response.status === 401 || response.status === 403 || response.status === 404) {
+      if (requestGeneration !== generation.current) return;
+      if (
+        response.status === 401 ||
+        response.status === 403 ||
+        response.status === 404
+      ) {
         // Expired viewer links must not retain the last authorized snapshot.
         setState(null);
+        setStale(true);
+        failures.current += 1;
       } else if (response.ok) {
-        const snapshot = await response.json() as AuctionStateResponse;
+        const snapshot = (await response.json()) as AuctionStateResponse;
         // A Realtime bid can arrive while an older snapshot is in flight.
         // Never allow that outdated response to briefly replace the new leader.
         const freshBid = recentBidRef.current;
-        if (requestSequenceRef.current !== requestSequence &&
-            freshBid && snapshot.current?.id === freshBid.auction_player_id &&
-            (!snapshot.highestBid || snapshot.highestBid.amount < freshBid.amount)) {
+        if (
+          requestSequenceRef.current !== requestSequence &&
+          freshBid &&
+          snapshot.current?.id === freshBid.auction_player_id &&
+          (!snapshot.highestBid || snapshot.highestBid.amount < freshBid.amount)
+        ) {
           snapshot.highestBid = {
-            id: freshBid.id, team_id: freshBid.team_id,
-            amount: freshBid.amount, created_at: freshBid.created_at,
+            id: freshBid.id,
+            team_id: freshBid.team_id,
+            amount: freshBid.amount,
+            created_at: freshBid.created_at,
           };
           needsRefreshRef.current = true;
         }
+        if (requestGeneration !== generation.current) return;
         setState(snapshot);
+        failures.current = 0;
+        lastSuccess.current = Date.now();
+        setStale(false);
+      } else {
+        failures.current += 1;
       }
     } catch {
-      // Transient connection loss: next Realtime event or fallback poll retries.
+      if (requestGeneration === generation.current) failures.current += 1;
     } finally {
+      clearTimeout(timeout);
+      if (requestGeneration !== generation.current) return;
       inFlightRef.current = false;
       setLoading(false);
       if (needsRefreshRef.current) {
@@ -157,71 +210,181 @@ export function useAuctionState(auctionId: string, pollMs = 2500, viewerToken?: 
   }, [auctionId, viewerToken]);
 
   useEffect(() => {
+    generation.current += 1;
+    inFlightRef.current = false;
+    recentBidRef.current = null;
+    setState(null);
+    setStale(true);
+    setLoading(true);
+    setConnected(false);
     void refresh();
+    const cleanup = () => {
+      generation.current += 1;
+      controller.current?.abort();
+    };
+    // Bearer-link spectators use the authorized snapshot endpoint. Anonymous
+    // table subscriptions would bypass link expiry/revocation.
+    if (viewerToken) return cleanup;
     const supabase = createClient();
     const channel = supabase
       .channel(`auction-${auctionId}`)
-      .on("postgres_changes", {
-        event: "INSERT", schema: "public", table: "bids",
-        filter: `auction_id=eq.${auctionId}`,
-      }, (event) => {
-        const bid = event.new as BidUpdate;
-        applyBid(bid);
-        // Direct payload is instant; a later full snapshot confirms totals.
-      })
-      .on("postgres_changes", {
-        event: "UPDATE", schema: "public", table: "bids",
-        filter: `auction_id=eq.${auctionId}`,
-      }, () => { recentBidRef.current = null; void refresh(); })
-      .on("postgres_changes", {
-        event: "*", schema: "public", table: "auction_players",
-        filter: `auction_id=eq.${auctionId}`,
-      }, () => { recentBidRef.current = null; void refresh(); })
-      .on("postgres_changes", {
-        event: "*", schema: "public", table: "auctions",
-        filter: `id=eq.${auctionId}`,
-      }, () => { void refresh(); })
-      .on("postgres_changes", {
-        event: "*", schema: "public", table: "purse_ledger",
-        filter: `auction_id=eq.${auctionId}`,
-      }, () => { void refresh(); })
-      .on("postgres_changes", {
-        event: "*", schema: "public", table: "team_players",
-        filter: `auction_id=eq.${auctionId}`,
-      }, () => { void refresh(); })
-      .on("postgres_changes", {
-        event: "*", schema: "public", table: "teams",
-        filter: `auction_id=eq.${auctionId}`,
-      }, () => { void refresh(); })
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "bids",
+          filter: `auction_id=eq.${auctionId}`,
+        },
+        (event) => {
+          const bid = event.new as BidUpdate;
+          applyBid(bid);
+          // Direct payload is instant; a later full snapshot confirms totals.
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "bids",
+          filter: `auction_id=eq.${auctionId}`,
+        },
+        () => {
+          recentBidRef.current = null;
+          void refresh();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "auction_players",
+          filter: `auction_id=eq.${auctionId}`,
+        },
+        () => {
+          recentBidRef.current = null;
+          void refresh();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "auctions",
+          filter: `id=eq.${auctionId}`,
+        },
+        () => {
+          void refresh();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "purse_ledger",
+          filter: `auction_id=eq.${auctionId}`,
+        },
+        () => {
+          void refresh();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "team_players",
+          filter: `auction_id=eq.${auctionId}`,
+        },
+        () => {
+          void refresh();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "teams",
+          filter: `auction_id=eq.${auctionId}`,
+        },
+        () => {
+          void refresh();
+        },
+      )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
           setConnected(true);
           void refresh();
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        } else if (
+          status === "CHANNEL_ERROR" ||
+          status === "TIMED_OUT" ||
+          status === "CLOSED"
+        ) {
           setConnected(false);
         }
       });
 
     return () => {
+      cleanup();
       void supabase.removeChannel(channel);
     };
-  }, [auctionId, applyBid, refresh]);
+  }, [auctionId, viewerToken, applyBid, refresh]);
 
-  // Realtime is the primary delivery path; poll slowly while connected,
-  // poll more frequently when a websocket is disconnected or blocked.
+  // Spread audience requests and back off failures instead of accelerating load
+  // during an outage. Hidden tabs make no requests.
   useEffect(() => {
-    const fallbackMs = connected ? Math.max(pollMs, 5000) : Math.min(pollMs, 1200);
-    const interval = setInterval(() => { void refresh(); }, fallbackMs);
-    return () => clearInterval(interval);
-  }, [pollMs, connected, refresh]);
+    let timer: ReturnType<typeof setTimeout>;
+    let stopped = false;
+    const schedule = () => {
+      const base = viewerToken
+        ? Math.max(pollMs, 2500)
+        : connected
+          ? Math.max(pollMs, 5000)
+          : Math.max(pollMs, 1500);
+      const delay = Math.min(15000, base * 2 ** Math.min(failures.current, 3));
+      timer = setTimeout(
+        async () => {
+          await refresh();
+          if (!stopped) schedule();
+        },
+        delay * (0.9 + Math.random() * 0.2),
+      );
+    };
+    schedule();
+    const freshness = setInterval(
+      () => setStale(Date.now() - lastSuccess.current > 10000),
+      1000,
+    );
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      clearInterval(freshness);
+    };
+  }, [pollMs, connected, refresh, viewerToken]);
 
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === "visible") void refresh();
     };
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onVisible);
+    };
   }, [refresh]);
 
-  return { state, loading, refresh, applyBid, realtimeConnected: connected };
+  return {
+    state,
+    loading,
+    refresh,
+    applyBid,
+    stale,
+    realtimeConnected: connected,
+  };
 }

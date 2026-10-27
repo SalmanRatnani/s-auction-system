@@ -1,5 +1,7 @@
 "use client";
 
+import { sendAction, type PendingAction } from "@/lib/action-request";
+import { formatINR } from "@/lib/utils";
 import { useRef, useState } from "react";
 import { useAuctionState } from "@/hooks/useAuctionState";
 import { Button } from "@/components/ui/button";
@@ -10,12 +12,28 @@ import { CategoryPicker } from "@/components/auction/CategoryPicker";
 import { getBasePrice } from "@/constants/categories";
 import { Pause, Play, Check, Undo2, X } from "lucide-react";
 
-export function ConsoleClient({ auctionId }: { auctionId: string }) {
-  const { state, loading, refresh, realtimeConnected } = useAuctionState(
+type ConsoleAction =
+  | "unsold"
+  | "skip"
+  | "sell"
+  | "undo"
+  | "pause"
+  | "resume"
+  | "draw";
+
+export function ConsoleClient({
+  auctionId,
+  canSkip,
+}: {
+  auctionId: string;
+  canSkip: boolean;
+}) {
+  const { state, loading, refresh, realtimeConnected, stale } = useAuctionState(
     auctionId,
     1500,
   );
   const inFlight = useRef(false);
+  const pending = useRef<PendingAction | null>(null);
   const [busy, setBusy] = useState<
     null | "unsold" | "skip" | "sell" | "undo" | "pause" | "resume" | "draw"
   >(null);
@@ -61,27 +79,33 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
 
   async function call(
     endpoint: string,
-    label: NonNullable<typeof busy>,
+    label: ConsoleAction,
     confirmMsg?: string,
     payload?: object,
   ) {
-    if (inFlight.current || (confirmMsg && !window.confirm(confirmMsg))) return;
+    if (
+      (stale && !pending.current) ||
+      inFlight.current ||
+      (confirmMsg && !window.confirm(confirmMsg))
+    )
+      return;
     inFlight.current = true;
     setBusy(label);
     setErr(null);
     try {
-      const res = await fetch(`/api/auction/${auctionId}/${endpoint}`, {
-        method: "POST",
-        ...(payload
-          ? {
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-            }
-          : {}),
-      });
-      const body = await res.json().catch(() => ({}));
+      const { response: res, body } = await sendAction(
+        `/api/auction/${auctionId}/${endpoint}`,
+        {
+          ...payload,
+          expectedVersion: auction?.state_version,
+          expectedPlayerId: current?.id ?? null,
+          expectedBidId: highestBid?.id ?? null,
+        },
+        pending,
+      );
       if (!res.ok) {
         setErr(body.error ?? "The action could not be completed.");
+        void refresh();
         return;
       }
       void refresh();
@@ -102,6 +126,57 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
   return (
     <div className="space-y-6 max-w-6xl animate-fade-up">
       <SoldCelebration lastSale={state.lastSale} />
+      {pending.current && !busy && (
+        <div
+          role="alert"
+          className="rounded-lg border border-[var(--warning-line)] p-3 text-sm"
+        >
+          An action is awaiting confirmation. Retrieve its result before
+          continuing.
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-3"
+            onClick={() => {
+              const endpoint = pending.current!.url.split("/").pop()!;
+              const labels: Record<string, ConsoleAction> = {
+                "next-player": "draw",
+                "skip-player": "skip",
+                "undo-bid": "undo",
+                sell: "sell",
+                unsold: "unsold",
+                pause: "pause",
+                resume: "resume",
+              };
+              void call(endpoint, labels[endpoint]);
+            }}
+          >
+            Confirm previous action
+          </Button>
+        </div>
+      )}
+      {stale && (
+        <p role="alert" className="text-[var(--warning)] text-sm">
+          Updates are delayed. Controls resume after the auction syncs.
+        </p>
+      )}
+      {teams.some((t) => (t.captain_settlement_shortfall ?? 0) > 0) && (
+        <div
+          role="alert"
+          className="rounded-xl border border-[var(--warning-line)] p-4 text-sm"
+        >
+          <strong>Captain settlement needs attention</strong>
+          {teams
+            .filter((t) => (t.captain_settlement_shortfall ?? 0) > 0)
+            .map((t) => (
+              <p key={t.id}>
+                {t.name}: estimated shortfall{" "}
+                {formatINR(t.captain_settlement_shortfall!)}. The controller
+                must resolve it before category closure.
+              </p>
+            ))}
+        </div>
+      )}
       <header className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-[22px] font-semibold tracking-tight">
@@ -136,7 +211,7 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
               size="sm"
               onClick={() => call("pause", "pause")}
               loading={busy === "pause"}
-              disabled={busy !== null}
+              disabled={busy !== null || (stale && !pending.current)}
             >
               <Pause size={13} strokeWidth={2} />
               Pause
@@ -148,7 +223,7 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
               size="sm"
               onClick={() => call("resume", "resume")}
               loading={busy === "resume"}
-              disabled={busy !== null}
+              disabled={busy !== null || (stale && !pending.current)}
             >
               <Play size={13} strokeWidth={2} />
               Resume
@@ -210,7 +285,12 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
                 <Button
                   onClick={() => call("sell", "sell")}
                   loading={busy === "sell"}
-                  disabled={busy !== null || !highestBid || !isLive}
+                  disabled={
+                    busy !== null ||
+                    (stale && !pending.current) ||
+                    !highestBid ||
+                    !isLive
+                  }
                 >
                   <Check size={14} strokeWidth={2} />
                   Sell to{" "}
@@ -220,7 +300,9 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
                   variant="outline"
                   onClick={() => call("undo-bid", "undo")}
                   loading={busy === "undo"}
-                  disabled={busy !== null || !highestBid}
+                  disabled={
+                    busy !== null || (stale && !pending.current) || !highestBid
+                  }
                 >
                   <Undo2 size={14} strokeWidth={2} /> Undo last bid
                 </Button>
@@ -230,16 +312,18 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
               variant="danger"
               onClick={() => call("unsold", "unsold")}
               loading={busy === "unsold"}
-              disabled={busy !== null || !isLive}
+              disabled={busy !== null || (stale && !pending.current) || !isLive}
             >
               <X size={14} strokeWidth={2} />
               {isLegacyRoundTwo ? "Mark unsold" : "Unsold → Retry same player"}
             </Button>
-            {isRetry && !isLegacyRoundTwo && (
+            {canSkip && isRetry && !isLegacyRoundTwo && (
               <Button
                 variant="outline"
                 loading={busy === "skip"}
-                disabled={busy !== null || !isLive}
+                disabled={
+                  busy !== null || (stale && !pending.current) || !isLive
+                }
                 onClick={() =>
                   call(
                     "skip-player",
@@ -268,7 +352,7 @@ export function ConsoleClient({ auctionId }: { auctionId: string }) {
       {isLive && (
         <CategoryPicker
           counts={counts}
-          disabled={hasCurrent || busy !== null}
+          disabled={hasCurrent || busy !== null || stale}
           onDraw={drawNext}
         />
       )}

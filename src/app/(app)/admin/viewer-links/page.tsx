@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { RoleGuard } from "@/components/guards/RoleGuard";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { getOrCreateDraftAuction } from "@/lib/auction";
+import { RevokeViewerLink } from "./RevokeViewerLink";
 import { CreateViewerLink } from "./CreateViewerLink";
 
 export const dynamic = "force-dynamic";
@@ -19,12 +20,14 @@ async function Inner() {
   const auction = await getOrCreateDraftAuction();
   if (!auction) return <div className="text-[var(--danger)]">No auction.</div>;
 
-  const { data: links } = await supabase
+  const { data: links, error } = await supabase
     .from("viewer_links")
     .select("id, token, expires_at, created_at")
     .eq("auction_id", auction.id)
     .order("created_at", { ascending: false })
     .limit(20);
+
+  if (error) throw new Error("Viewer links could not be loaded");
 
   return (
     <div className="space-y-6 max-w-3xl animate-fade-up">
@@ -62,15 +65,16 @@ async function Inner() {
                     </code>
                     <span
                       className={`text-[10px] tnum ${
-                        expired
-                          ? "text-[var(--danger)]"
-                          : "text-[var(--fg-4)]"
+                        expired ? "text-[var(--danger)]" : "text-[var(--fg-4)]"
                       }`}
                     >
                       {expired
                         ? "expired"
                         : `expires ${new Date(l.expires_at).toLocaleString("en-IN")}`}
                     </span>
+                    {!expired && (
+                      <RevokeViewerLink auctionId={auction.id} linkId={l.id} />
+                    )}
                   </div>
                 );
               })}
