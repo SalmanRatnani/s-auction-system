@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Check, Monitor, Moon, Sun, SunMoon } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
 import type { ThemePreference } from "./theme";
@@ -18,57 +18,67 @@ const options = [
 
 export function ThemePicker() {
   const { preference, setPreference } = useTheme();
-  const details = useRef<HTMLDetailsElement>(null);
-  const summary = useRef<HTMLElement>(null);
+  const container = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    const closeOutside = (event: PointerEvent) => {
+    const closeOutside = (event: Event) => {
       if (
         event.target instanceof Node &&
-        !details.current?.contains(event.target) &&
-        details.current
+        !container.current?.contains(event.target)
       )
-        details.current.open = false;
+        setOpen(false);
     };
     document.addEventListener("pointerdown", closeOutside);
-    return () => document.removeEventListener("pointerdown", closeOutside);
+    document.addEventListener("focusin", closeOutside);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("focusin", closeOutside);
+    };
   }, [open]);
 
   function choose(value: ThemePreference) {
     setPreference(value);
-    if (details.current) details.current.open = false;
-    summary.current?.focus();
+    setOpen(false);
+    trigger.current?.focus({ preventScroll: true });
   }
 
   return (
-    <details
-      ref={details}
+    <div
+      ref={container}
       className="theme-picker"
-      onToggle={(event) => setOpen(event.currentTarget.open)}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget))
-          event.currentTarget.open = false;
-      }}
+      data-open={open}
       onKeyDown={(event) => {
-        if (event.key === "Escape" && details.current?.open) {
+        if (event.key === "Escape" && open) {
           event.preventDefault();
           event.stopPropagation();
-          details.current.open = false;
-          summary.current?.focus();
+          setOpen(false);
+          trigger.current?.focus({ preventScroll: true });
         }
       }}
     >
-      <summary
-        ref={summary}
+      <button
+        ref={trigger}
+        type="button"
         className="theme-toggle"
         aria-label="Choose color theme"
+        aria-expanded={open}
+        aria-controls={menuId}
         title="Choose color theme"
+        onClick={() => setOpen((value) => !value)}
       >
         <SunMoon size={19} aria-hidden="true" />
-      </summary>
-      <div className="theme-menu" role="group" aria-label="Color theme">
+      </button>
+      <div
+        id={menuId}
+        className="theme-menu"
+        role="group"
+        aria-label="Color theme"
+        hidden={!open}
+      >
         <span className="theme-menu-label">YOUR ARENA. YOUR ATMOSPHERE.</span>
         {options.map(({ value, label, detail, icon: Icon }) => (
           <button
@@ -87,6 +97,6 @@ export function ThemePicker() {
           </button>
         ))}
       </div>
-    </details>
+    </div>
   );
 }

@@ -34,7 +34,9 @@ export function Topbar({
           </span>
           <span className="text-[13px] font-medium">{page}</span>
         </div>
-        <RoleBadge role={role} />
+        <span className="app-topbar-role">
+          <RoleBadge role={role} />
+        </span>
       </div>
       <div className="flex items-center gap-2">
         <QuickNavigation
