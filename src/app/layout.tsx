@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./motion.css";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { themeBootstrap } from "@/components/theme/theme";
 

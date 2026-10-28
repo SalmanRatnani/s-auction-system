@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { auctionStateError } from "@/lib/auction-availability";
 
 export type LastSale = {
   id: string;
@@ -90,6 +91,7 @@ export function useAuctionState(
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
   const [stale, setStale] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const lastSuccess = useRef(0);
   const failures = useRef(0);
   const generation = useRef(0);
@@ -158,16 +160,19 @@ export function useAuctionState(
         signal: abort.signal,
       });
       if (requestGeneration !== generation.current) return;
-      if (
-        response.status === 401 ||
-        response.status === 403 ||
-        response.status === 404
-      ) {
-        // Expired viewer links must not retain the last authorized snapshot.
-        setState(null);
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        if (requestGeneration !== generation.current) return;
+        if ([401, 403, 404].includes(response.status)) {
+          // Expired viewer links must not retain the last authorized snapshot.
+          setState(null);
+          recentBidRef.current = null;
+          lastSuccess.current = 0;
+        }
+        setError(auctionStateError(response.status, body?.code));
         setStale(true);
         failures.current += 1;
-      } else if (response.ok) {
+      } else {
         const snapshot = (await response.json()) as AuctionStateResponse;
         // A Realtime bid can arrive while an older snapshot is in flight.
         // Never allow that outdated response to briefly replace the new leader.
@@ -188,14 +193,17 @@ export function useAuctionState(
         }
         if (requestGeneration !== generation.current) return;
         setState(snapshot);
+        setError(null);
         failures.current = 0;
         lastSuccess.current = Date.now();
         setStale(false);
-      } else {
-        failures.current += 1;
       }
     } catch {
-      if (requestGeneration === generation.current) failures.current += 1;
+      if (requestGeneration === generation.current) {
+        failures.current += 1;
+        setError(auctionStateError(0));
+        setStale(true);
+      }
     } finally {
       clearTimeout(timeout);
       if (requestGeneration !== generation.current) return;
@@ -212,8 +220,12 @@ export function useAuctionState(
   useEffect(() => {
     generation.current += 1;
     inFlightRef.current = false;
+    needsRefreshRef.current = false;
+    lastSuccess.current = 0;
+    failures.current = 0;
     recentBidRef.current = null;
     setState(null);
+    setError(null);
     setStale(true);
     setLoading(true);
     setConnected(false);
@@ -357,7 +369,10 @@ export function useAuctionState(
     };
     schedule();
     const freshness = setInterval(
-      () => setStale(Date.now() - lastSuccess.current > 10000),
+      () =>
+        setStale(
+          failures.current > 0 || Date.now() - lastSuccess.current > 10000,
+        ),
       1000,
     );
     return () => {
@@ -381,6 +396,7 @@ export function useAuctionState(
 
   return {
     state,
+    error,
     loading,
     refresh,
     applyBid,

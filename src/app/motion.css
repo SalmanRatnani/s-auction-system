@@ -1,0 +1,202 @@
+/* Interaction-led motion. Exact auction values and focus targets stay immediate. */
+.auction-connection {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  max-width: 680px;
+  margin: 24px auto;
+  padding: clamp(24px, 5vw, 40px);
+  background: var(--bg-1);
+  border: 1px solid var(--line-2);
+  border-radius: 18px;
+}
+.auction-connection-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-line);
+  border-radius: 14px;
+}
+.auction-connection h2 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.auction-connection p {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--fg-3);
+}
+.auction-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 16px;
+  padding: 8px 16px;
+  border: 1px solid var(--accent-line);
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: 12px;
+}
+.auction-retry:hover {
+  background: var(--accent-bg);
+}
+@media (max-width: 400px) {
+  .auction-connection {
+    flex-direction: column;
+  }
+}
+.depth-surface,
+.depth-surface-card {
+  min-width: 0;
+}
+.depth-surface-card {
+  transform: perspective(1100px) rotateX(var(--depth-x, 0deg))
+    rotateY(var(--depth-y, 0deg));
+  transition: transform 320ms var(--ease-out);
+}
+.role-selector button {
+  position: relative;
+}
+.role-selector button::after {
+  content: "";
+  position: absolute;
+  inset: auto 18px 5px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 320ms var(--ease-out);
+}
+.role-selector button[aria-selected="true"]::after {
+  transform: scaleX(1);
+}
+
+@keyframes detail-arrive {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes detail-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes crest-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(7px) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(0);
+  }
+}
+@keyframes court-sheen {
+  from {
+    transform: translateX(-140%) skewX(-16deg);
+  }
+  to {
+    transform: translateX(140%) skewX(-16deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .role-story li,
+  .role-workspace dl > div {
+    animation: detail-arrive 420ms var(--ease-out) backwards;
+  }
+  .role-story li:nth-child(2),
+  .role-workspace dl > div:nth-child(2) {
+    animation-delay: 65ms;
+  }
+  .role-story li:nth-child(3),
+  .role-workspace dl > div:nth-child(3) {
+    animation-delay: 130ms;
+  }
+  .role-workspace-main {
+    animation: detail-rise 500ms var(--ease-out) backwards;
+  }
+  .role-team-marks .team-emblem {
+    animation: crest-arrive 420ms var(--ease-out) backwards;
+  }
+  .role-team-marks .team-emblem:nth-child(2) {
+    animation-delay: 70ms;
+  }
+  .role-team-marks .team-emblem:nth-child(3) {
+    animation-delay: 140ms;
+  }
+  .demo-team-tile[data-leading="true"] .team-emblem {
+    animation: crest-arrive 420ms var(--ease-out);
+  }
+  .marketing-mobile-nav:not([hidden]) a {
+    animation: detail-arrive 280ms var(--ease-out) backwards;
+  }
+  .marketing-mobile-nav a:nth-child(2) {
+    animation-delay: 35ms;
+  }
+  .marketing-mobile-nav a:nth-child(3) {
+    animation-delay: 70ms;
+  }
+  .marketing-mobile-nav a:nth-child(4) {
+    animation-delay: 105ms;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .role-workspace-main {
+    position: relative;
+    overflow: hidden;
+  }
+  .role-workspace-main::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 30%,
+      #ffffff0c 50%,
+      transparent 70%
+    );
+    pointer-events: none;
+    transform: translateX(-140%) skewX(-16deg);
+  }
+  .role-depth:hover .role-workspace-main::after {
+    animation: court-sheen 800ms var(--ease-out);
+  }
+}
+
+/* Focus remains visible even if it arrives midway through a stagger. */
+.role-stage:focus-within .role-story li,
+.role-stage:focus-within .role-workspace-main,
+.role-stage:focus-within .role-workspace dl > div,
+.role-stage:focus-within .role-team-marks .team-emblem,
+.marketing-mobile-nav a:focus {
+  animation: none;
+}
+.depth-surface:focus-within .depth-surface-card {
+  transform: none;
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce), (hover: none), (pointer: coarse) {
+  .depth-surface-card {
+    transform: none;
+  }
+}

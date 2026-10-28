@@ -2,7 +2,7 @@
 
 ## Automated gates
 
-Run `npm ci`, `npm run typecheck`, `npm test`, `npm audit --omit=dev --audit-level=high`, and `npm run build`.
+Run `npm ci`, `npm run typecheck`, `npm run lint`, `npm test`, `npm audit --omit=dev --audit-level=high`, and `npm run build`.
 
 The local SQL suite applies **every migration**, in order, to isolated PGlite PostgreSQL. GitHub's Auction SQL integration job repeats that suite on native PostgreSQL 17, with independent connections for simultaneous bids, sale versus undo, and repeated top-ups. The platform fixture only supplies Auth, Storage and roles; it does not substitute application functions.
 

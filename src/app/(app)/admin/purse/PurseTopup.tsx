@@ -14,6 +14,7 @@ export function PurseTopup({
 }) {
   const router = useRouter();
   const pending = useRef<PendingAction | null>(null);
+  const [hasPending, setHasPending] = useState(false);
   const inFlight = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +57,7 @@ export function PurseTopup({
       );
     } finally {
       inFlight.current = false;
+      setHasPending(pending.current !== null);
       setBusy(false);
     }
   }
@@ -70,7 +72,7 @@ export function PurseTopup({
         className="w-full"
       >
         <Plus size={12} />
-        {pending.current ? "Check pending top-up" : "Add virtual credits"}
+        {hasPending ? "Check pending top-up" : "Add virtual credits"}
       </Button>
       {error && (
         <p role="alert" className="text-xs text-[var(--danger)]">

@@ -18,6 +18,7 @@ export function MarketingHeader() {
   const header = useRef<HTMLElement>(null);
   const progress = useRef<HTMLSpanElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLElement>(null);
 
   useEffect(() => {
     let frame = 0;
@@ -69,10 +70,11 @@ export function MarketingHeader() {
 
   useEffect(() => {
     if (!open) return;
-    const onOutside = (event: PointerEvent) => {
+    const onOutside = (event: Event) => {
       if (
         event.target instanceof Node &&
-        !header.current?.contains(event.target)
+        !menu.current?.contains(event.target) &&
+        !menuButton.current?.contains(event.target)
       )
         setOpen(false);
     };
@@ -81,9 +83,11 @@ export function MarketingHeader() {
       if (wide.matches) setOpen(false);
     };
     document.addEventListener("pointerdown", onOutside);
+    document.addEventListener("focusin", onOutside);
     wide.addEventListener("change", onResize);
     return () => {
       document.removeEventListener("pointerdown", onOutside);
+      document.removeEventListener("focusin", onOutside);
       wide.removeEventListener("change", onResize);
     };
   }, [open]);
@@ -92,9 +96,6 @@ export function MarketingHeader() {
     <header
       ref={header}
       className="marketing-header"
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
-      }}
       onKeyDown={(event) => {
         if (event.key === "Escape" && open) {
           event.preventDefault();
@@ -136,6 +137,7 @@ export function MarketingHeader() {
         </div>
       </div>
       <nav
+        ref={menu}
         id="marketing-mobile-nav"
         className="marketing-mobile-nav"
         aria-label="Mobile navigation"

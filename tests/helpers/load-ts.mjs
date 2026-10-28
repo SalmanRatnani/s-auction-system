@@ -7,8 +7,8 @@ const cache = new Map();
 export function loadTs(path) {
   path = resolve(path);
   if (cache.has(path)) return cache.get(path);
-  const module = { exports: {} };
-  cache.set(path, module.exports);
+  const loadedModule = { exports: {} };
+  cache.set(path, loadedModule.exports);
   const native = createRequire(path);
   function require(name) {
     if (!name.startsWith(".") && !name.startsWith("@/")) return native(name);
@@ -34,8 +34,8 @@ export function loadTs(path) {
   }).outputText;
   new Function("require", "module", "exports", output)(
     require,
-    module,
-    module.exports,
+    loadedModule,
+    loadedModule.exports,
   );
-  return module.exports;
+  return loadedModule.exports;
 }

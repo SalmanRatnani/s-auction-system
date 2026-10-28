@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAuctionState } from "@/hooks/useAuctionState";
+import { AuctionConnection } from "@/components/auction/AuctionConnection";
 import { useBidAlerts, unlockAudio } from "@/hooks/useBidAlerts";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
@@ -25,7 +26,7 @@ export function BidClient({
   auctionId: string;
   userId: string;
 }) {
-  const { state, loading, refresh, applyBid, realtimeConnected, stale } =
+  const { state, loading, error, refresh, applyBid, realtimeConnected, stale } =
     useAuctionState(auctionId, 1500);
   const bidInFlight = useRef(false);
   const [customAmount, setCustomAmount] = useState("");
@@ -45,22 +46,11 @@ export function BidClient({
 
   if (loading || !state) {
     return (
-      <div
-        role="status"
-        className="rounded-xl border border-[var(--line-2)] p-8 text-sm text-[var(--fg-3)]"
-      >
-        {loading
-          ? "Connecting to your auction…"
-          : "Unable to load this auction. Check your connection or sign in again."}
-        {!loading && (
-          <button
-            onClick={() => void refresh()}
-            className="block text-[var(--accent)] mt-4"
-          >
-            Try again
-          </button>
-        )}
-      </div>
+      <AuctionConnection
+        loading={loading}
+        error={error}
+        onRetry={() => void refresh()}
+      />
     );
   }
 
@@ -197,7 +187,8 @@ export function BidClient({
       <SoldCelebration lastSale={state.lastSale} />
       {stale && (
         <p role="alert" className="text-[var(--warning)] text-sm">
-          Updates are delayed. Bidding resumes after the auction syncs.
+          {error ??
+            "Updates are delayed. Bidding resumes after the auction syncs."}
         </p>
       )}
       <header className="flex items-center justify-between flex-wrap gap-3">

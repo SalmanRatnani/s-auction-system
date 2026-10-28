@@ -1,6 +1,7 @@
 import { Check, Gavel, Pause, Play, Radio } from "lucide-react";
 import { formatINR } from "@/lib/utils";
 import { DEMO_TEAMS, type DemoEvent } from "./demo-state";
+import { MotionList } from "@/components/motion/MotionList";
 
 const eventIcons = { bid: Gavel, pause: Pause, resume: Play, sell: Check };
 export function DemoActivity({ events }: { events: DemoEvent[] }) {
@@ -15,7 +16,10 @@ export function DemoActivity({ events }: { events: DemoEvent[] }) {
       </header>
       <p className="activity-caption">Your latest 8 demo actions</p>
       {events.length ? (
-        <ol className="activity-list">
+        <MotionList
+          className="activity-list"
+          revision={events.map((event) => event.id).join(":")}
+        >
           {events.map((event) => {
             const Icon = eventIcons[event.kind];
             const team = DEMO_TEAMS.find((item) => item.id === event.teamId);
@@ -30,6 +34,7 @@ export function DemoActivity({ events }: { events: DemoEvent[] }) {
             return (
               <li
                 key={event.id}
+                data-motion-id={event.id}
                 className="activity-event"
                 data-kind={event.kind}
               >
@@ -53,7 +58,7 @@ export function DemoActivity({ events }: { events: DemoEvent[] }) {
               </li>
             );
           })}
-        </ol>
+        </MotionList>
       ) : (
         <div className="activity-empty">
           <span>
