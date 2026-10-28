@@ -17,7 +17,7 @@ export function ProjectorView({
   showPurse?: boolean;
   viewerToken?: string;
 }) {
-  const { state, loading, realtimeConnected } = useAuctionState(
+  const { state, loading, realtimeConnected, stale } = useAuctionState(
     auctionId,
     2000,
     viewerToken,
@@ -26,7 +26,9 @@ export function ProjectorView({
   if (loading || !state) {
     return (
       <div className="min-h-screen grid place-items-center text-[13px] text-[var(--fg-3)]">
-        Loading…
+        {loading
+          ? "Connecting to the auction…"
+          : "Auction unavailable or access expired. Refresh or sign in again."}
       </div>
     );
   }
@@ -53,9 +55,11 @@ export function ProjectorView({
             {auction?.name}
           </div>
           <div className="text-[11px] text-[var(--fg-4)] mt-1" role="status">
-            {realtimeConnected
-              ? "● Realtime connected"
-              : "○ Reconnecting · automatic refresh active"}
+            {stale
+              ? "Updates delayed · reconnecting"
+              : realtimeConnected
+                ? "● Realtime connected"
+                : "Live updates · automatic refresh active"}
           </div>
         </div>
         <div
@@ -134,17 +138,18 @@ export function ProjectorView({
                       {t.squad_count} players
                     </div>
                   </div>
-                  {showPurse && (
-                    <div
-                      className={`text-[13px] font-mono tnum ${
-                        leader?.id === t.id
-                          ? "text-[var(--accent)]"
-                          : "text-[var(--fg-2)]"
-                      }`}
-                    >
-                      <AnimatedAmount value={t.remaining_purse} />
-                    </div>
-                  )}
+                  {(showPurse || auction?.config.showPurseToViewers === true) &&
+                    t.purse_visible === true && (
+                      <div
+                        className={`text-[13px] font-mono tnum ${
+                          leader?.id === t.id
+                            ? "text-[var(--accent)]"
+                            : "text-[var(--fg-2)]"
+                        }`}
+                      >
+                        <AnimatedAmount value={t.remaining_purse} />
+                      </div>
+                    )}
                 </div>
               ))}
             </div>

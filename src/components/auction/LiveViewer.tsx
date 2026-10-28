@@ -20,14 +20,20 @@ export function LiveViewer({
   viewerToken?: string;
   teamLinkBase?: string;
 }) {
-  const { state, loading, realtimeConnected } = useAuctionState(
+  const { state, loading, realtimeConnected, stale } = useAuctionState(
     auctionId,
     2500,
     viewerToken,
   );
 
   if (loading || !state) {
-    return <div className="text-[13px] text-[var(--fg-3)]">Loading…</div>;
+    return (
+      <div className="text-[13px] text-[var(--fg-3)]">
+        {loading
+          ? "Connecting to the auction…"
+          : "Auction unavailable or access expired. Refresh or sign in again."}
+      </div>
+    );
   }
 
   const { auction, current, highestBid, teams } = state;
@@ -46,9 +52,11 @@ export function LiveViewer({
             Live Auction
           </h1>
           <p className="text-[11px] text-[var(--fg-3)] mt-1" role="status">
-            {realtimeConnected
-              ? "● Realtime connected"
-              : "○ Reconnecting · automatic refresh active"}
+            {stale
+              ? "Updates delayed · reconnecting"
+              : realtimeConnected
+                ? "● Realtime connected"
+                : "Live updates · automatic refresh active"}
           </p>
           <p className="text-[13px] text-[var(--fg-3)] mt-1">
             {auction?.name} ·{" "}
@@ -106,11 +114,13 @@ export function LiveViewer({
                     <div className="text-[12px] text-[var(--fg-1)] font-medium truncate mt-2">
                       {t.name}
                     </div>
-                    {showPurse && (
-                      <div className="text-[12px] font-mono text-[var(--accent)] tnum mt-1">
-                        <AnimatedAmount value={t.remaining_purse} />
-                      </div>
-                    )}
+                    {(showPurse ||
+                      auction?.config.showPurseToViewers === true) &&
+                      t.purse_visible === true && (
+                        <div className="text-[12px] font-mono text-[var(--accent)] tnum mt-1">
+                          <AnimatedAmount value={t.remaining_purse} />
+                        </div>
+                      )}
                     <div className="text-[10px] text-[var(--fg-4)] tnum mt-0.5">
                       {t.squad_count} players
                     </div>

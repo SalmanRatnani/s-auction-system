@@ -1,3 +1,4 @@
+import { createAuthorizedReader } from "@/lib/security/page-access";
 import { createClient } from "@/lib/supabase/server";
 import { RoleGuard } from "@/components/guards/RoleGuard";
 import { Card, CardBody } from "@/components/ui/card";
@@ -20,6 +21,7 @@ export default async function TeamsPage() {
 
 async function Inner() {
   const supabase = await createClient();
+  const reader = await createAuthorizedReader(["MAIN_CONTROLLER"]);
   const auction = await getOrCreateDraftAuction();
   if (!auction) {
     return <div className="text-[var(--danger)]">Failed to init auction.</div>;
@@ -27,24 +29,34 @@ async function Inner() {
 
   // A newer app can deploy ahead of the optional co-captain migration.
   // Fall back to the original schema rather than showing zero teams.
-  const fullQuery = await supabase
+  const fullQuery = await reader
     .from("teams")
-    .select("id, name, logo_url, captain_user_id, co_captain_user_id, captain_player_id, co_captain_player_id, initial_purse, created_at")
+    .select(
+      "id, name, logo_url, captain_user_id, co_captain_user_id, captain_player_id, co_captain_player_id, initial_purse, created_at",
+    )
     .eq("auction_id", auction.id)
     .order("created_at", { ascending: true });
   const needsMigration = isMissingPartnerColumn(fullQuery.error);
   const originalQuery = needsMigration
-    ? await supabase.from("teams")
-        .select("id, name, logo_url, captain_user_id, captain_player_id, initial_purse, created_at")
+    ? await reader
+        .from("teams")
+        .select(
+          "id, name, logo_url, captain_user_id, captain_player_id, initial_purse, created_at",
+        )
         .eq("auction_id", auction.id)
         .order("created_at", { ascending: true })
     : null;
-  const teamsError = originalQuery?.error ?? (needsMigration ? null : fullQuery.error);
+  const teamsError =
+    originalQuery?.error ?? (needsMigration ? null : fullQuery.error);
   const teams = needsMigration
-    ? (originalQuery?.data ?? []).map((team) => ({ ...team, co_captain_user_id: null, co_captain_player_id: null }))
-    : fullQuery.data ?? [];
+    ? (originalQuery?.data ?? []).map((team) => ({
+        ...team,
+        co_captain_user_id: null,
+        co_captain_player_id: null,
+      }))
+    : (fullQuery.data ?? []);
 
-  const { data: users } = await supabase
+  const { data: users } = await reader
     .from("users")
     .select("id, email, display_name, role")
     .order("display_name", { ascending: true });
@@ -56,26 +68,29 @@ async function Inner() {
     .flatMap((t) => [t.captain_player_id, t.co_captain_player_id])
     .filter((v): v is string => !!v);
 
-  let playersQuery = supabase
+  let playersQuery = reader
     .from("players")
     .select("id, name, grade, player_code")
     .order("name", { ascending: true });
   playersQuery =
     assignedCaptainIds.length > 0
       ? playersQuery.or(
-          `status.eq.IN_POOL,id.in.(${assignedCaptainIds.join(",")})`
+          `status.eq.IN_POOL,id.in.(${assignedCaptainIds.join(",")})`,
         )
       : playersQuery.eq("status", "IN_POOL");
   // Allow real players to be reserved while the auction is still in DRAFT,
   // even before the controller switches from DRY_RUN to LIVE. Reserving a
   // captain does NOT start a real auction. QA options stay rehearsal-only.
   const { data: allPlayers, error: playersError } = await playersQuery;
-  const players = (allPlayers ?? []).filter((player) =>
-    assignedCaptainIds.includes(player.id) ||
-    !player.player_code.startsWith("QA-") ||
-    auction.mode === "DRY_RUN"
+  const players = (allPlayers ?? []).filter(
+    (player) =>
+      assignedCaptainIds.includes(player.id) ||
+      !player.player_code.startsWith("QA-") ||
+      auction.mode === "DRY_RUN",
   );
-  const availableRealPlayers = players.filter((p) => !p.player_code.startsWith("QA-")).length;
+  const availableRealPlayers = players.filter(
+    (p) => !p.player_code.startsWith("QA-"),
+  ).length;
 
   return (
     <div className="space-y-6 max-w-6xl animate-fade-up">
@@ -92,29 +107,47 @@ async function Inner() {
             teams
           </p>
         </div>
-        <CreateTeamButton disabled={!!teamsError || teams.length >= MAX_TEAMS} />
+        <CreateTeamButton
+          disabled={!!teamsError || teams.length >= MAX_TEAMS}
+        />
       </header>
 
       {needsMigration && (
-        <div role="alert" className="rounded-lg border border-[var(--warning-line)] bg-[var(--warning-bg)] p-4 text-[13px] text-[var(--warning)]">
-          The optional partner-captain database migration has not been applied yet.
-          Existing teams are displayed, but adding a partner requires Supabase migration 0015.
+        <div
+          role="alert"
+          className="rounded-lg border border-[var(--warning-line)] bg-[var(--warning-bg)] p-4 text-[13px] text-[var(--warning)]"
+        >
+          The optional partner-captain database migration has not been applied
+          yet. Existing teams are displayed, but adding a partner requires
+          Supabase migration 0015.
         </div>
       )}
       {teamsError && (
-        <div role="alert" className="rounded-lg border border-[var(--danger-line)] bg-[var(--danger-bg)] p-4 text-[13px] text-[var(--danger)]">
-          Could not load teams: {teamsError.message}. No teams have been deleted.
+        <div
+          role="alert"
+          className="rounded-lg border border-[var(--danger-line)] bg-[var(--danger-bg)] p-4 text-[13px] text-[var(--danger)]"
+        >
+          Could not load teams: {teamsError.message}. No teams have been
+          deleted.
         </div>
       )}
       {playersError && (
-        <div role="alert" className="rounded-lg border border-[var(--danger-line)] bg-[var(--danger-bg)] p-4 text-[13px] text-[var(--danger)]">
+        <div
+          role="alert"
+          className="rounded-lg border border-[var(--danger-line)] bg-[var(--danger-bg)] p-4 text-[13px] text-[var(--danger)]"
+        >
           Could not load playing captains: {playersError.message}
         </div>
       )}
       {auction.mode === "DRY_RUN" && availableRealPlayers > 0 && (
-        <div role="note" className="rounded-lg border border-[var(--warning-line)] bg-[var(--warning-bg)] p-4 text-[13px] text-[var(--warning)]">
-          Approved real players are available to assign as playing captains. This auction is still in DRY_RUN.
-          Switch it to LIVE from Auction Control before starting a real auction. DRY_RUN cannot start with real playing captains.
+        <div
+          role="note"
+          className="rounded-lg border border-[var(--warning-line)] bg-[var(--warning-bg)] p-4 text-[13px] text-[var(--warning)]"
+        >
+          Approved real players are available to assign as playing captains.
+          This auction is still in DRY_RUN. Switch it to LIVE from Auction
+          Control before starting a real auction. DRY_RUN cannot start with real
+          playing captains.
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -125,7 +158,8 @@ async function Inner() {
             users={users ?? []}
             players={players ?? []}
             takenPlayerIds={assignedCaptainIds.filter(
-              (pid) => pid !== t.captain_player_id && pid !== t.co_captain_player_id
+              (pid) =>
+                pid !== t.captain_player_id && pid !== t.co_captain_player_id,
             )}
           />
         ))}

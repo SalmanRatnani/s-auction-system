@@ -8,6 +8,7 @@ export type Auction = {
   mode: "DRY_RUN" | "LIVE";
   status: "DRAFT" | "LIVE" | "PAUSED" | "ENDED";
   config: Record<string, unknown>;
+  state_version: number;
   created_by: string | null;
 };
 
@@ -30,7 +31,11 @@ export async function getOrCreateDraftAuction(): Promise<Auction | null> {
   } = await supabase.auth.getUser();
 
   if (!user) return null;
-  const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
+  const { data: profile } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
   if (profile?.role !== "MAIN_CONTROLLER") return null;
 
   // Client-side INSERT is intentionally revoked by migration 0024.

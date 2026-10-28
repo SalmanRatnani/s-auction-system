@@ -1,9 +1,9 @@
 "use client";
-
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Minus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { sendAction, type PendingAction } from "@/lib/action-request";
 
 export function PurseTopup({
   teamId,
@@ -13,57 +13,70 @@ export function PurseTopup({
   teamName: string;
 }) {
   const router = useRouter();
-  const [busy, setBusy] = useState<"add" | "sub" | null>(null);
-
-  async function adjust(sign: 1 | -1) {
-    const input = window.prompt(
-      `Amount in ₹ to ${sign > 0 ? "add to" : "subtract from"} ${teamName}:`,
-      "1000000"
-    );
-    if (!input) return;
-    const rupees = Number(input);
-    if (!Number.isFinite(rupees) || rupees <= 0) return;
-
-    setBusy(sign > 0 ? "add" : "sub");
-    const res = await fetch(`/api/teams/${teamId}/topup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: Math.round(sign * rupees * 100),
-        reason: sign > 0 ? "Controller top-up" : "Controller adjustment",
-      }),
-    });
-    setBusy(null);
-    if (!res.ok) {
-      const b = await res.json().catch(() => ({}));
-      alert(b.error ?? "Failed");
-      return;
+  const pending = useRef<PendingAction | null>(null);
+  const inFlight = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function adjust() {
+    if (inFlight.current) return;
+    let amount = pending.current?.body.amount;
+    if (!pending.current) {
+      const input = window.prompt(
+        `Virtual credits in ₹ units to add to ${teamName}:`,
+        "1000000",
+      );
+      if (!input) return;
+      amount = Math.round(Number(input) * 100);
+      if (
+        !Number.isSafeInteger(amount) ||
+        Number(amount) <= 0 ||
+        Number(amount) > 100_000_000_000
+      ) {
+        setError("Enter a valid positive amount.");
+        return;
+      }
     }
-    router.refresh();
+    inFlight.current = true;
+    setBusy(true);
+    setError(null);
+    try {
+      const { response, body } = await sendAction(
+        `/api/teams/${teamId}/topup`,
+        { amount, reason: "Controller top-up" },
+        pending,
+      );
+      if (!response.ok) {
+        setError(body.error ?? "Top-up could not be confirmed.");
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError(
+        "Confirmation interrupted. Retry to check the same top-up; it will not be added twice.",
+      );
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
   }
-
   return (
-    <div className="flex gap-2">
+    <div className="space-y-2">
       <Button
         size="sm"
         variant="secondary"
-        onClick={() => adjust(1)}
-        loading={busy === "add"}
-        disabled={busy !== null}
-        className="flex-1"
+        onClick={adjust}
+        loading={busy}
+        disabled={busy}
+        className="w-full"
       >
-        <Plus size={12} strokeWidth={2.5} />
-        Add funds
+        <Plus size={12} />
+        {pending.current ? "Check pending top-up" : "Add virtual credits"}
       </Button>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => adjust(-1)}
-        loading={busy === "sub"}
-        disabled={busy !== null}
-      >
-        <Minus size={12} strokeWidth={2.5} />
-      </Button>
+      {error && (
+        <p role="alert" className="text-xs text-[var(--danger)]">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

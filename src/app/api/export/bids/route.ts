@@ -1,65 +1,73 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { authorizeExport, csvResponse } from "@/lib/export-data";
+import { allRows } from "@/lib/pagination";
 import { csvCell } from "@/lib/security/csv";
-import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
-
-export async function GET() {
-  const userClient = await createClient();
-  const { data: { user } } = await userClient.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { data: profile } = await userClient
-    .from("users").select("role").eq("id", user.id).single();
-  if (profile?.role !== "MAIN_CONTROLLER" && profile?.role !== "AUCTIONEER") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const admin = createAdminClient();
-  const { data: auctions } = await admin
-    .from("auctions")
-    .select("id").order("created_at", { ascending: false }).limit(1);
-  const auctionId = auctions?.[0]?.id;
-  if (!auctionId) return NextResponse.json({ error: "No auction" }, { status: 404 });
-
-  const { data: bids } = await admin
-    .from("bids")
-    .select(`
-      id, amount, is_undone, created_at,
-      team:teams (name),
-      auction_player:auction_players (
-        player:players (player_code, name, grade)
-      )
-    `)
-    .eq("auction_id", auctionId)
-    .order("created_at", { ascending: true });
-
-  const lines: string[] = [];
-  lines.push(
-    ["Timestamp", "Player Code", "Player Name", "Grade", "Team", "Amount (₹)", "Undone"].join(",")
-  );
-
-  (bids ?? []).forEach((b) => {
-    const ap = Array.isArray(b.auction_player) ? b.auction_player[0] : b.auction_player;
-    const p = ap && (Array.isArray(ap.player) ? ap.player[0] : ap.player);
-    const t = Array.isArray(b.team) ? b.team[0] : b.team;
-    lines.push(
-      [
-        new Date(b.created_at).toISOString(),
-        csvCell(p?.player_code ?? ""),
-        csvCell(p?.name ?? ""),
-        csvCell(p?.grade ?? ""),
-        csvCell(t?.name ?? ""),
-        (b.amount / 100).toFixed(0),
-        b.is_undone ? "yes" : "no",
-      ].join(",")
+export async function GET(request: NextRequest) {
+  const auth = await authorizeExport(request);
+  if (auth.error) return auth.error;
+  const { admin, auctionId } = auth;
+  try {
+    const bids = await allRows((from, to) =>
+      admin
+        .from("bids")
+        .select(
+          "id,amount,is_undone,created_at,team_id,auction_player_id,team:teams(name),auction_player:auction_players(player:players(player_code,name,grade))",
+        )
+        .eq("auction_id", auctionId)
+        .order("created_at")
+        .order("id")
+        .range(from, to),
     );
-  });
-
-  const csv = lines.join("\n");
-  return new NextResponse(csv, {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="s-auction-bids-${Date.now()}.csv"`,
-    },
-  });
+    const lines = [
+      [
+        "Schema Version",
+        "Auction ID",
+        "Bid ID",
+        "Attempt ID",
+        "Timestamp",
+        "Player Code",
+        "Player Name",
+        "Grade",
+        "Team ID",
+        "Team",
+        "Amount (₹)",
+        "Amount (paise)",
+        "Undone",
+      ].join(","),
+    ];
+    for (const b of bids) {
+      const ap = Array.isArray(b.auction_player)
+        ? b.auction_player[0]
+        : b.auction_player;
+      const p = ap && (Array.isArray(ap.player) ? ap.player[0] : ap.player);
+      const t = Array.isArray(b.team) ? b.team[0] : b.team;
+      lines.push(
+        [
+          2,
+          auctionId,
+          b.id,
+          b.auction_player_id,
+          b.created_at,
+          p?.player_code ?? "",
+          p?.name ?? "",
+          p?.grade ?? "",
+          b.team_id,
+          t?.name ?? "",
+          (Number(b.amount) / 100).toFixed(2),
+          b.amount,
+          b.is_undone ? "yes" : "no",
+        ]
+          .map(csvCell)
+          .join(","),
+      );
+    }
+    return csvResponse(lines.join("\n"), "bids", auctionId);
+  } catch {
+    return NextResponse.json(
+      {
+        error: "The complete bid export could not be generated. Please retry.",
+      },
+      { status: 503 },
+    );
+  }
 }

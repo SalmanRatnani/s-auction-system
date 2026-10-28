@@ -40,8 +40,8 @@ const DEFAULT_CONFIG: Config = {
   increments: { ...DEFAULT_INCREMENTS },
   initialPurse: 1_00_00_000_00,
   increment: { mode: "FIXED", value: 5_000_00 },
-  timer: { enabled: false, seconds: 30, autoSellOnExpiry: true },
-  reserveGuard: false,
+  timer: { enabled: false, seconds: 30, autoSellOnExpiry: false },
+  reserveGuard: true,
   showPurseToCaptains: true,
   showPurseToViewers: false,
   showPoolCounts: true,
@@ -61,18 +61,24 @@ export function AuctionConfig({ auction }: { auction: Auction }) {
     basePrices: { ...DEFAULT_BASE_PRICES, ...(stored.basePrices ?? {}) },
     increments: { ...DEFAULT_INCREMENTS, ...(stored.increments ?? {}) },
     increment: { ...DEFAULT_CONFIG.increment, ...(stored.increment ?? {}) },
-    timer: { ...DEFAULT_CONFIG.timer, ...(stored.timer ?? {}) },
+    timer: {
+      ...DEFAULT_CONFIG.timer,
+      ...(stored.timer ?? {}),
+      enabled: false,
+      autoSellOnExpiry: false,
+    },
+    reserveGuard: true,
   };
 
   const [config, setConfig] = useState<Config>(initial);
   const [name, setName] = useState(auction.name);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(
-    null
+    null,
   );
   const [openPrices, setOpenPrices] = useState(false);
 
-  const isLocked = auction.status === "LIVE" || auction.status === "PAUSED";
+  const isLocked = auction.status !== "DRAFT";
 
   function update<K extends keyof Config>(key: K, value: Config[K]) {
     setConfig((c) => ({ ...c, [key]: value }));
@@ -96,7 +102,7 @@ export function AuctionConfig({ auction }: { auction: Auction }) {
     if (
       !window.confirm(
         "Reset all base prices and increments to the defaults?\n\n" +
-          "This will overwrite any custom values you've entered for this auction."
+          "This will overwrite any custom values you've entered for this auction.",
       )
     )
       return;
@@ -154,7 +160,7 @@ export function AuctionConfig({ auction }: { auction: Auction }) {
               onChange={(e) =>
                 update(
                   "initialPurse",
-                  Math.max(0, Number(e.target.value) * 100)
+                  Math.max(0, Number(e.target.value) * 100),
                 )
               }
               disabled={isLocked}
@@ -172,58 +178,16 @@ export function AuctionConfig({ auction }: { auction: Auction }) {
               disabled={isLocked}
             />
           </Field>
-          <Field label="Timer (seconds)">
-            <Input
-              type="number"
-              value={config.timer.seconds}
-              onChange={(e) =>
-                update("timer", {
-                  ...config.timer,
-                  seconds: Math.max(5, Number(e.target.value) || 30),
-                })
-              }
-              disabled={isLocked || !config.timer.enabled}
-            />
-          </Field>
-          <Field label="Legacy increment (₹)" hint="Unused — kept for backwards compatibility">
-            <Input
-              type="number"
-              value={config.increment.value / 100}
-              onChange={(e) =>
-                update("increment", {
-                  ...config.increment,
-                  value: Math.max(100, Number(e.target.value) * 100),
-                })
-              }
-              disabled={isLocked}
-            />
-          </Field>
         </div>
 
+        <p className="text-xs text-[var(--fg-3)]">
+          Sales are confirmed manually. Playing-captain purse reserves are
+          always protected.
+        </p>
         {/* Toggles */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-2">
           <Toggle
-            label="Timer enabled"
-            checked={config.timer.enabled}
-            onChange={(v) => update("timer", { ...config.timer, enabled: v })}
-            disabled={isLocked}
-          />
-          <Toggle
-            label="Auto-sell on expiry"
-            checked={config.timer.autoSellOnExpiry}
-            onChange={(v) =>
-              update("timer", { ...config.timer, autoSellOnExpiry: v })
-            }
-            disabled={isLocked || !config.timer.enabled}
-          />
-          <Toggle
-            label="Reserve guard"
-            checked={config.reserveGuard}
-            onChange={(v) => update("reserveGuard", v)}
-            disabled={isLocked}
-          />
-          <Toggle
-            label="Purse to captains"
+            label="Other teams’ purses to captains"
             checked={config.showPurseToCaptains}
             onChange={(v) => update("showPurseToCaptains", v)}
             disabled={isLocked}
@@ -250,11 +214,7 @@ export function AuctionConfig({ auction }: { auction: Auction }) {
               onClick={() => setOpenPrices((v) => !v)}
               className="flex items-center gap-1.5 text-[13px] text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors"
             >
-              {openPrices ? (
-                <ChevronUp size={14} />
-              ) : (
-                <ChevronDown size={14} />
-              )}
+              {openPrices ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               {openPrices ? "Hide" : "Show"} base prices &amp; increments
             </button>
             {openPrices && (
@@ -287,7 +247,7 @@ export function AuctionConfig({ auction }: { auction: Auction }) {
                       onChange={(e) =>
                         updateBasePrice(
                           c,
-                          Math.max(0, Number(e.target.value) * 100)
+                          Math.max(0, Number(e.target.value) * 100),
                         )
                       }
                       disabled={isLocked}
@@ -304,7 +264,7 @@ export function AuctionConfig({ auction }: { auction: Auction }) {
                       onChange={(e) =>
                         updateIncrement(
                           c,
-                          Math.max(0, Number(e.target.value) * 100)
+                          Math.max(0, Number(e.target.value) * 100),
                         )
                       }
                       disabled={isLocked}

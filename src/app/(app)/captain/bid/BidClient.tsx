@@ -25,7 +25,7 @@ export function BidClient({
   auctionId: string;
   userId: string;
 }) {
-  const { state, loading, refresh, applyBid, realtimeConnected } =
+  const { state, loading, refresh, applyBid, realtimeConnected, stale } =
     useAuctionState(auctionId, 1500);
   const bidInFlight = useRef(false);
   const [customAmount, setCustomAmount] = useState("");
@@ -123,7 +123,7 @@ export function BidClient({
 
   async function placeBid(amount: number) {
     unlockAudio();
-    if (!current || bidInFlight.current) return;
+    if (stale || !current || bidInFlight.current) return;
     if (
       !Number.isSafeInteger(amount) ||
       amount < nextBid ||
@@ -143,6 +143,7 @@ export function BidClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ auctionPlayerId: current.id, amount }),
+        signal: AbortSignal.timeout(10_000),
       });
       const body = await res.json().catch(() => ({}));
       setBusy(false);
@@ -180,6 +181,7 @@ export function BidClient({
   }
 
   const cannotBid =
+    stale ||
     !isLive ||
     !current ||
     !myTeam ||
@@ -193,6 +195,11 @@ export function BidClient({
   return (
     <div className="max-w-6xl space-y-5 animate-fade-up">
       <SoldCelebration lastSale={state.lastSale} />
+      {stale && (
+        <p role="alert" className="text-[var(--warning)] text-sm">
+          Updates are delayed. Bidding resumes after the auction syncs.
+        </p>
+      )}
       <header className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-[22px] font-semibold tracking-tight">

@@ -1,3 +1,4 @@
+import { createAuthorizedReader } from "@/lib/security/page-access";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -22,25 +23,41 @@ export default async function MyTeamPage() {
 
 async function Inner() {
   const supabase = await createClient();
+  const reader = await createAuthorizedReader(["CAPTAIN", "MAIN_CONTROLLER"]);
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const auction = await getOrCreateDraftAuction();
   if (!auction) return <div className="text-[var(--danger)]">No auction.</div>;
 
-  const teamQuery = await supabase.from("teams")
-    .select("id, name, logo_url, captain_user_id, co_captain_user_id, initial_purse")
+  const teamQuery = await reader
+    .from("teams")
+    .select(
+      "id, name, logo_url, captain_user_id, co_captain_user_id, initial_purse",
+    )
     .eq("auction_id", auction.id)
     .or(`captain_user_id.eq.${user!.id},co_captain_user_id.eq.${user!.id}`)
     .maybeSingle();
   const fallback = isMissingPartnerColumn(teamQuery.error)
-    ? await supabase.from("teams")
+    ? await reader
+        .from("teams")
         .select("id, name, logo_url, captain_user_id, initial_purse")
-        .eq("auction_id", auction.id).eq("captain_user_id", user!.id).maybeSingle()
+        .eq("auction_id", auction.id)
+        .eq("captain_user_id", user!.id)
+        .maybeSingle()
     : null;
   const teamError = fallback?.error ?? (fallback ? null : teamQuery.error);
-  if (teamError) return <div role="alert" className="text-[var(--danger)]">Could not load team: {teamError.message}</div>;
-  const team = fallback ? (fallback.data ? { ...fallback.data, co_captain_user_id: null } : null) : teamQuery.data;
+  if (teamError)
+    return (
+      <div role="alert" className="text-[var(--danger)]">
+        Could not load team: {teamError.message}
+      </div>
+    );
+  const team = fallback
+    ? fallback.data
+      ? { ...fallback.data, co_captain_user_id: null }
+      : null
+    : teamQuery.data;
 
   if (!team) {
     return (
@@ -57,15 +74,19 @@ async function Inner() {
     );
   }
 
-  const { data: rosterRaw } = await supabase
+  const { data: rosterRaw, error: rosterError } = await reader
     .from("team_players")
-    .select(`
+    .select(
+      `
       id, price, acquired_via, won_at,
       player:players (id, player_code, name, grade, image_url)
-    `)
+    `,
+    )
     .eq("auction_id", auction.id)
     .eq("team_id", team.id)
     .order("won_at", { ascending: true });
+  if (rosterError)
+    throw new Error("Team roster could not be loaded. Please refresh.");
 
   const roster = (rosterRaw ?? [])
     .map((r) => {
@@ -80,11 +101,13 @@ async function Inner() {
     })
     .filter((r): r is NonNullable<typeof r> => r !== null);
 
-  const { data: purseRow } = await supabase
+  const { data: purseRow, error: purseError } = await reader
     .from("team_purses")
     .select("remaining_purse, spent, squad_count")
     .eq("team_id", team.id)
     .maybeSingle();
+  if (purseError || !purseRow)
+    throw new Error("Purse information is unavailable. Please refresh.");
 
   const remaining = Number(purseRow?.remaining_purse ?? team.initial_purse);
   const spent = Number(purseRow?.spent ?? 0);

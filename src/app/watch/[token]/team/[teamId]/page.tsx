@@ -1,6 +1,10 @@
+import { validateViewerToken } from "@/lib/security/viewer";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { TeamDetail, type TeamDetailData } from "@/components/auction/TeamDetail";
+import {
+  TeamDetail,
+  type TeamDetailData,
+} from "@/components/auction/TeamDetail";
 import { DEFAULT_CONFIG } from "@/constants/auction-config";
 
 export const dynamic = "force-dynamic";
@@ -27,24 +31,21 @@ export default async function WatchTeamPage({
       <div className="min-h-screen grid place-items-center p-6">
         <div className="max-w-md text-center space-y-3">
           <h1 className="text-2xl font-bold">Link expired</h1>
-          <p className="text-white/60 text-sm">
+          <p className="text-[var(--fg-3)] text-sm">
             Ask the auctioneer for a new link.
           </p>
         </div>
       </div>
     );
   }
+  if (!(await validateViewerToken(token, link.auction_id))) notFound();
 
   const team = await loadTeamData(admin, link.auction_id, teamId);
   if (!team) notFound();
 
   return (
     <main className="min-h-screen p-4 md:p-8">
-      <TeamDetail
-        team={team}
-        showPurse={false}
-        backHref={`/watch/${token}`}
-      />
+      <TeamDetail team={team} showPurse={false} backHref={`/watch/${token}`} />
     </main>
   );
 }
@@ -52,11 +53,13 @@ export default async function WatchTeamPage({
 export async function loadTeamData(
   admin: ReturnType<typeof createAdminClient>,
   auctionId: string,
-  teamId: string
+  teamId: string,
 ): Promise<TeamDetailData | null> {
   const { data: teamRow } = await admin
     .from("teams")
-    .select("id, name, logo_url, captain_user_id, co_captain_user_id, initial_purse")
+    .select(
+      "id, name, logo_url, captain_user_id, co_captain_user_id, initial_purse",
+    )
     .eq("id", teamId)
     .eq("auction_id", auctionId)
     .maybeSingle();
@@ -65,37 +68,48 @@ export async function loadTeamData(
 
   // Captain display name
   let captainDisplay: string | null = null;
-  const captainIds = [teamRow.captain_user_id, teamRow.co_captain_user_id].filter((id): id is string => !!id);
+  const captainIds = [
+    teamRow.captain_user_id,
+    teamRow.co_captain_user_id,
+  ].filter((id): id is string => !!id);
   if (captainIds.length) {
     const { data: captains } = await admin
       .from("users")
-      .select("id, display_name, email")
+      .select("id, display_name")
       .in("id", captainIds);
-    captainDisplay = captainIds.map((id) => {
-      const user = captains?.find((person) => person.id === id);
-      return user?.display_name ?? user?.email ?? "Captain";
-    }).join(" / ");
+    captainDisplay = captainIds
+      .map((id) => {
+        const user = captains?.find((person) => person.id === id);
+        return user?.display_name ?? "Captain";
+      })
+      .join(" / ");
   }
 
   // Purse + squad
-  const { data: purseRow } = await admin
+  const { data: purseRow, error: purseError } = await admin
     .from("team_purses")
     .select("remaining_purse, spent, squad_count")
     .eq("team_id", teamId)
     .maybeSingle();
+  if (purseError || !purseRow)
+    throw new Error("Purse information is unavailable. Please refresh.");
 
   // Roster
-  const { data: rosterRaw } = await admin
+  const { data: rosterRaw, error: rosterError } = await admin
     .from("team_players")
-    .select(`
+    .select(
+      `
       id, price, acquired_via, won_at,
       player:players (
         id, player_code, name, grade, image_url, playing_centre
       )
-    `)
+    `,
+    )
     .eq("team_id", teamId)
     .eq("auction_id", auctionId)
     .order("won_at", { ascending: true });
+  if (rosterError)
+    throw new Error("Team roster could not be loaded. Please refresh.");
 
   const roster = (rosterRaw ?? [])
     .map((r) => {

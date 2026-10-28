@@ -1,71 +1,101 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { authorizeExport, csvResponse } from "@/lib/export-data";
+import { allRows } from "@/lib/pagination";
 import { csvCell } from "@/lib/security/csv";
-import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
-
-export async function GET() {
-  const userClient = await createClient();
-  const { data: { user } } = await userClient.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { data: profile } = await userClient
-    .from("users").select("role").eq("id", user.id).single();
-  if (profile?.role !== "MAIN_CONTROLLER" && profile?.role !== "AUCTIONEER") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const admin = createAdminClient();
-  const { data: auctions } = await admin
-    .from("auctions")
-    .select("id")
-    .in("status", ["LIVE", "PAUSED", "ENDED", "DRAFT"])
-    .order("created_at", { ascending: false })
-    .limit(1);
-  const auctionId = auctions?.[0]?.id;
-  if (!auctionId) return NextResponse.json({ error: "No auction" }, { status: 404 });
-
-  const { data: teams } = await admin
-    .from("teams").select("id, name").eq("auction_id", auctionId)
-    .order("created_at");
-
-  const { data: rows } = await admin
-    .from("team_players")
-    .select(`
-      team_id, price, acquired_via, won_at,
-      player:players (player_code, name, grade, playing_centre)
-    `)
-    .eq("auction_id", auctionId)
-    .order("won_at");
-
-  const teamName = (id: string) => teams?.find((t) => t.id === id)?.name ?? "";
-
-  const lines: string[] = [];
-  lines.push(
-    ["Team", "Player Code", "Player Name", "Grade", "Playing Centre", "Price (₹)", "Acquired Via", "Won At"].join(",")
-  );
-
-  (rows ?? []).forEach((r) => {
-    const p = Array.isArray(r.player) ? r.player[0] : r.player;
-    if (!p) return;
-    lines.push(
-      [
-        csvCell(teamName(r.team_id)),
-        csvCell(p.player_code),
-        csvCell(p.name),
-        csvCell(p.grade),
-        csvCell(p.playing_centre ?? ""),
-        (r.price / 100).toFixed(0),
-        csvCell(r.acquired_via),
-        csvCell(new Date(r.won_at).toISOString()),
-      ].join(",")
+export async function GET(request: NextRequest) {
+  const auth = await authorizeExport(request);
+  if (auth.error) return auth.error;
+  const { admin, auctionId } = auth;
+  try {
+    const { data: teams, error } = await admin
+      .from("teams")
+      .select("id,name,captain_player_id,co_captain_player_id,logo_url")
+      .eq("auction_id", auctionId);
+    if (error) throw error;
+    const rows = await allRows((from, to) =>
+      admin
+        .from("team_players")
+        .select(
+          "id,team_id,player_id,price,acquired_via,won_at,player:players(id,player_code,name,grade,playing_centre,playing_hand,image_url,achievements)",
+        )
+        .eq("auction_id", auctionId)
+        .order("won_at")
+        .order("id")
+        .range(from, to),
     );
-  });
-
-  const csv = lines.join("\n");
-  return new NextResponse(csv, {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="s-auction-teams-${Date.now()}.csv"`,
-    },
-  });
+    const generated = new Date().toISOString();
+    const lines = [
+      [
+        "Schema Version",
+        "Auction ID",
+        "Team ID",
+        "Team",
+        "Player ID",
+        "Player Code",
+        "Player Name",
+        "Grade",
+        "Playing Centre",
+        "Playing Hand",
+        "Price (₹)",
+        "Price (paise)",
+        "Acquired Via",
+        "Captain Slot",
+        "Image Export Filename",
+        "Image URL",
+        "Achievements",
+        "Team Logo URL",
+        "Won At",
+        "Generated At",
+      ].join(","),
+    ];
+    for (const r of rows) {
+      const p = Array.isArray(r.player) ? r.player[0] : r.player;
+      if (!p) throw new Error("Missing player");
+      const t = teams?.find((t) => t.id === r.team_id);
+      if (!t) throw new Error("Missing team");
+      let filename = "";
+      try {
+        filename = `${p.id}.${new URL(p.image_url ?? "").pathname.split(".").pop() ?? "webp"}`;
+      } catch {}
+      lines.push(
+        [
+          2,
+          auctionId,
+          t.id,
+          t.name,
+          p.id,
+          p.player_code,
+          p.name,
+          p.grade,
+          p.playing_centre ?? "",
+          p.playing_hand ?? "",
+          (Number(r.price) / 100).toFixed(2),
+          r.price,
+          r.acquired_via,
+          t.captain_player_id === p.id
+            ? 1
+            : t.co_captain_player_id === p.id
+              ? 2
+              : "",
+          filename,
+          p.image_url ?? "",
+          p.achievements ?? "",
+          t.logo_url ?? "",
+          r.won_at,
+          generated,
+        ]
+          .map(csvCell)
+          .join(","),
+      );
+    }
+    return csvResponse(lines.join("\n"), "teams", auctionId);
+  } catch {
+    return NextResponse.json(
+      {
+        error:
+          "The complete roster export could not be generated. Please retry.",
+      },
+      { status: 503 },
+    );
+  }
 }

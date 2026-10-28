@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 const VALID: readonly string[] = [
@@ -11,7 +10,7 @@ const VALID: readonly string[] = [
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
 
@@ -43,50 +42,18 @@ export async function PATCH(
   if (id === user.id && role !== "MAIN_CONTROLLER") {
     return NextResponse.json(
       { error: "You cannot change your own role" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  const admin = createAdminClient();
-
-  const { data: target } = await admin
-    .from("users")
-    .select("email, role")
-    .eq("id", id)
-    .maybeSingle();
-  if (!target) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
-
-  // Guard: don't demote the last Main Controller
-  if (target.role === "MAIN_CONTROLLER" && role !== "MAIN_CONTROLLER") {
-    const { count } = await admin
-      .from("users")
-      .select("id", { count: "exact", head: true })
-      .eq("role", "MAIN_CONTROLLER");
-    if ((count ?? 0) <= 1) {
-      return NextResponse.json(
-        { error: "Cannot demote the last Main Controller" },
-        { status: 409 }
-      );
-    }
-  }
-
-  const { error } = await admin
-    .from("users")
-    .update({ role })
-    .eq("id", id);
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  await admin.from("audit_log").insert({
-    actor_user_id: user.id,
-    action: "ROLE_CHANGED",
-    entity_type: "user",
-    entity_id: id,
-    payload: { from: target.role, to: role, email: target.email },
+  const { error } = await userClient.rpc("set_user_role", {
+    p_user_id: id,
+    p_role: role,
   });
-
+  if (error)
+    return NextResponse.json(
+      { error: error.code === "P0001" ? error.message : "Role update failed" },
+      { status: error.code === "42501" ? 403 : 409 },
+    );
   return NextResponse.json({ ok: true });
 }

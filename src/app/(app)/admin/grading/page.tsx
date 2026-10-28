@@ -1,3 +1,4 @@
+import { createAuthorizedReader } from "@/lib/security/page-access";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { RoleGuard } from "@/components/guards/RoleGuard";
@@ -23,8 +24,9 @@ export default async function GradingPage() {
 
 async function Inner() {
   const supabase = await createClient();
+  const reader = await createAuthorizedReader(["MAIN_CONTROLLER"]);
 
-  const { data: players } = await supabase
+  const { data: players } = await reader
     .from("players")
     .select("id, player_code, name, image_url, grade, status")
     .order("grade", { ascending: true })
@@ -66,9 +68,7 @@ async function Inner() {
                   <Badge tone={toneForGrade(c)}>{c}</Badge>
                   <span
                     className={`text-[11px] tnum ${
-                      over
-                        ? "text-[var(--danger)]"
-                        : "text-[var(--fg-4)]"
+                      over ? "text-[var(--danger)]" : "text-[var(--fg-4)]"
                     }`}
                   >
                     {list.length}/{PLAYERS_PER_CATEGORY}
