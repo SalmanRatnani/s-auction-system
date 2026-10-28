@@ -46,18 +46,30 @@ export function ArenaScene() {
       if (!cancelled) setReady(false);
     };
     const load = async () => {
-      if (loading || failed || cancelled) return;
+      if (
+        loading ||
+        failed ||
+        cancelled ||
+        !visible ||
+        document.hidden ||
+        preference.matches
+      )
+        return;
       loading = true;
       try {
         // This is the only runtime import of Three.js; the rest of the site stays light.
         const { createArenaScene } = await import("./arena-scene");
-        if (cancelled) return;
+        if (cancelled || !visible || document.hidden || preference.matches)
+          return;
+        if (controller.current) return;
         controller.current = createArenaScene(surface);
         resize();
         setReady(true);
         update();
       } catch {
         fail();
+      } finally {
+        loading = false;
       }
     };
     const observer =
@@ -82,6 +94,18 @@ export function ArenaScene() {
     if (!sizeObserver) window.addEventListener("resize", resize);
     const onPreference = () => {
       setReduced(preference.matches);
+      if (preference.matches) {
+        // Keep the lightweight poster and release GPU resources immediately.
+        controller.current?.dispose();
+        controller.current = null;
+        setReady(false);
+      } else {
+        void load();
+      }
+      update();
+    };
+    const onVisibility = () => {
+      if (!document.hidden) void load();
       update();
     };
     const onMove = (event: PointerEvent) => {
@@ -100,7 +124,7 @@ export function ArenaScene() {
     };
     const onLeave = () => controller.current?.setPointer(0, 0);
     preference.addEventListener("change", onPreference);
-    document.addEventListener("visibilitychange", update);
+    document.addEventListener("visibilitychange", onVisibility);
     surface.addEventListener("webglcontextlost", fail);
     element.addEventListener("pointermove", onMove, { passive: true });
     element.addEventListener("pointerleave", onLeave);
@@ -110,7 +134,7 @@ export function ArenaScene() {
       sizeObserver?.disconnect();
       window.removeEventListener("resize", resize);
       preference.removeEventListener("change", onPreference);
-      document.removeEventListener("visibilitychange", update);
+      document.removeEventListener("visibilitychange", onVisibility);
       surface.removeEventListener("webglcontextlost", fail);
       element.removeEventListener("pointermove", onMove);
       element.removeEventListener("pointerleave", onLeave);

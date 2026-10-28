@@ -2,6 +2,7 @@
 
 import { TeamLogo } from "@/components/branding/TeamLogo";
 import { useAuctionState } from "@/hooks/useAuctionState";
+import { AuctionConnection } from "@/components/auction/AuctionConnection";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
 import { SoldCelebration } from "@/components/auction/SoldCelebration";
 import { AnimatedAmount } from "@/components/ui/animated-amount";
@@ -17,19 +18,16 @@ export function ProjectorView({
   showPurse?: boolean;
   viewerToken?: string;
 }) {
-  const { state, loading, realtimeConnected, stale } = useAuctionState(
-    auctionId,
-    2000,
-    viewerToken,
-  );
+  const { state, loading, error, refresh, realtimeConnected, stale } =
+    useAuctionState(auctionId, 2000, viewerToken);
 
   if (loading || !state) {
     return (
-      <div className="min-h-screen grid place-items-center text-[13px] text-[var(--fg-3)]">
-        {loading
-          ? "Connecting to the auction…"
-          : "Auction unavailable or access expired. Refresh or sign in again."}
-      </div>
+      <AuctionConnection
+        loading={loading}
+        error={error}
+        onRetry={() => void refresh()}
+      />
     );
   }
 
@@ -56,7 +54,7 @@ export function ProjectorView({
           </div>
           <div className="text-[11px] text-[var(--fg-4)] mt-1" role="status">
             {stale
-              ? "Updates delayed · reconnecting"
+              ? (error ?? "Updates delayed · reconnecting")
               : realtimeConnected
                 ? "● Realtime connected"
                 : "Live updates · automatic refresh active"}

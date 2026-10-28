@@ -4,6 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { projectAuctionSnapshot, type Snapshot } from "@/lib/auction-snapshot";
 import { UUID } from "@/lib/auction-command";
+import {
+  AUCTION_SETUP_MESSAGE,
+  isAuctionSetupError,
+} from "@/lib/auction-availability";
 
 export async function GET(
   request: NextRequest,
@@ -42,8 +46,19 @@ export async function GET(
       code: error.code,
     });
     return NextResponse.json(
-      { error: "Auction state is temporarily unavailable", requestId },
-      { status: 503 },
+      {
+        error: isAuctionSetupError(error)
+          ? AUCTION_SETUP_MESSAGE
+          : "Auction state is temporarily unavailable",
+        code: isAuctionSetupError(error)
+          ? "AUCTION_SETUP_REQUIRED"
+          : "AUCTION_UNAVAILABLE",
+        requestId,
+      },
+      {
+        status: 503,
+        headers: { "Cache-Control": "private, no-store", "Retry-After": "15" },
+      },
     );
   }
   if (!data?.auction)

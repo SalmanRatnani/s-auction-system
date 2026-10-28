@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { TeamLogo } from "@/components/branding/TeamLogo";
+import { DepthSurface } from "@/components/motion/DepthSurface";
 
 const roles = [
   {
@@ -170,39 +171,41 @@ export function RoleShowcase() {
               <ArrowUpRight size={18} />
             </Link>
           </div>
-          <div
-            className="role-workspace"
-            aria-label={`${role.name} sample workspace`}
-          >
-            <header>
-              <span>
-                <Icon size={17} aria-hidden="true" />
-                {role.workspace}
-              </span>
-              <small>DEMO</small>
-            </header>
-            <div className="role-workspace-main">
-              <span className="eyebrow">{role.statLabel}</span>
-              <strong>{role.stat}</strong>
-              <p>{role.detail}</p>
-            </div>
-            <dl>
-              {role.rows.map((label, index) => (
-                <div key={label}>
-                  <dt>{label}</dt>
-                  <dd>{role.values[index]}</dd>
-                </div>
-              ))}
-            </dl>
-            <footer>
-              <div className="role-team-marks" aria-hidden="true">
-                <TeamLogo name="Smash Kings" />
-                <TeamLogo name="Net Ninjas" />
-                <TeamLogo name="Court Titans" />
+          <DepthSurface className="role-depth">
+            <div
+              className="role-workspace"
+              aria-label={`${role.name} sample workspace`}
+            >
+              <header>
+                <span>
+                  <Icon size={17} aria-hidden="true" />
+                  {role.workspace}
+                </span>
+                <small>DEMO</small>
+              </header>
+              <div className="role-workspace-main">
+                <span className="eyebrow">{role.statLabel}</span>
+                <strong>{role.stat}</strong>
+                <p>{role.detail}</p>
               </div>
-              <span>One room. Connected perspectives.</span>
-            </footer>
-          </div>
+              <dl>
+                {role.rows.map((label, index) => (
+                  <div key={label}>
+                    <dt>{label}</dt>
+                    <dd>{role.values[index]}</dd>
+                  </div>
+                ))}
+              </dl>
+              <footer>
+                <div className="role-team-marks" aria-hidden="true">
+                  <TeamLogo name="Smash Kings" />
+                  <TeamLogo name="Net Ninjas" />
+                  <TeamLogo name="Court Titans" />
+                </div>
+                <span>One room. Connected perspectives.</span>
+              </footer>
+            </div>
+          </DepthSurface>
         </div>
       </div>
     </div>

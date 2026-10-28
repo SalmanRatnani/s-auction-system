@@ -2,6 +2,10 @@ import "server-only";
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { readLimitedBody } from "@/lib/security/request";
+import {
+  AUCTION_SETUP_MESSAGE,
+  isAuctionSetupError,
+} from "@/lib/auction-availability";
 
 export const UUID = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
@@ -63,6 +67,15 @@ export async function runAuctionCommand(
       auctionId,
       code: error.code,
     });
+    if (isAuctionSetupError(error))
+      return reply(
+        {
+          error: AUCTION_SETUP_MESSAGE,
+          code: "AUCTION_SETUP_REQUIRED",
+          requestId,
+        },
+        503,
+      );
     const expected = ["P0001", "40001", "42501"].includes(error.code);
     return reply(
       {

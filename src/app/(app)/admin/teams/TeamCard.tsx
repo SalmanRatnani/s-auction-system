@@ -302,7 +302,7 @@ export function TeamCard({
           </select>
           <p className="text-[10px] text-[var(--fg-4)]">
             A second registered player, from a different category, automatically
-            allotted at that category's end. Both captains share the same purse
+            allotted at that category’s end. Both captains share the same purse
             and roster.
           </p>
         </div>

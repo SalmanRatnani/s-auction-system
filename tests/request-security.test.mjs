@@ -6,7 +6,7 @@ import ts from "typescript";
 import sharp from "sharp";
 const require = createRequire(import.meta.url);
 function load(path) {
-  const module = { exports: {} };
+  const loadedModule = { exports: {} };
   const compiled = ts.transpileModule(
     readFileSync(new URL(path, import.meta.url), "utf8"),
     {
@@ -19,10 +19,10 @@ function load(path) {
   ).outputText;
   new Function("require", "module", "exports", compiled)(
     require,
-    module,
-    module.exports,
+    loadedModule,
+    loadedModule.exports,
   );
-  return module.exports;
+  return loadedModule.exports;
 }
 const {
   isTrustedMutation,

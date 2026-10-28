@@ -4,6 +4,7 @@ import { sendAction, type PendingAction } from "@/lib/action-request";
 import { formatINR } from "@/lib/utils";
 import { useRef, useState } from "react";
 import { useAuctionState } from "@/hooks/useAuctionState";
+import { AuctionConnection } from "@/components/auction/AuctionConnection";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
@@ -28,12 +29,11 @@ export function ConsoleClient({
   auctionId: string;
   canSkip: boolean;
 }) {
-  const { state, loading, refresh, realtimeConnected, stale } = useAuctionState(
-    auctionId,
-    1500,
-  );
+  const { state, loading, error, refresh, realtimeConnected, stale } =
+    useAuctionState(auctionId, 1500);
   const inFlight = useRef(false);
   const pending = useRef<PendingAction | null>(null);
+  const [hasPending, setHasPending] = useState(false);
   const [busy, setBusy] = useState<
     null | "unsold" | "skip" | "sell" | "undo" | "pause" | "resume" | "draw"
   >(null);
@@ -41,22 +41,11 @@ export function ConsoleClient({
 
   if (loading || !state) {
     return (
-      <div
-        role="status"
-        className="rounded-xl border border-[var(--line-2)] p-8 text-sm text-[var(--fg-3)]"
-      >
-        {loading
-          ? "Connecting to the auction…"
-          : "Auction unavailable. Check your connection or sign in again."}
-        {!loading && (
-          <button
-            onClick={() => void refresh()}
-            className="block text-[var(--accent)] mt-4"
-          >
-            Try again
-          </button>
-        )}
-      </div>
+      <AuctionConnection
+        loading={loading}
+        error={error}
+        onRetry={() => void refresh()}
+      />
     );
   }
 
@@ -116,6 +105,7 @@ export function ConsoleClient({
       void refresh();
     } finally {
       inFlight.current = false;
+      setHasPending(pending.current !== null);
       setBusy(null);
     }
   }
@@ -126,7 +116,7 @@ export function ConsoleClient({
   return (
     <div className="space-y-6 max-w-6xl animate-fade-up">
       <SoldCelebration lastSale={state.lastSale} />
-      {pending.current && !busy && (
+      {hasPending && !busy && (
         <div
           role="alert"
           className="rounded-lg border border-[var(--warning-line)] p-3 text-sm"
@@ -157,7 +147,8 @@ export function ConsoleClient({
       )}
       {stale && (
         <p role="alert" className="text-[var(--warning)] text-sm">
-          Updates are delayed. Controls resume after the auction syncs.
+          {error ??
+            "Updates are delayed. Controls resume after the auction syncs."}
         </p>
       )}
       {teams.some((t) => (t.captain_settlement_shortfall ?? 0) > 0) && (
@@ -211,7 +202,7 @@ export function ConsoleClient({
               size="sm"
               onClick={() => call("pause", "pause")}
               loading={busy === "pause"}
-              disabled={busy !== null || (stale && !pending.current)}
+              disabled={busy !== null || (stale && !hasPending)}
             >
               <Pause size={13} strokeWidth={2} />
               Pause
@@ -223,7 +214,7 @@ export function ConsoleClient({
               size="sm"
               onClick={() => call("resume", "resume")}
               loading={busy === "resume"}
-              disabled={busy !== null || (stale && !pending.current)}
+              disabled={busy !== null || (stale && !hasPending)}
             >
               <Play size={13} strokeWidth={2} />
               Resume
@@ -287,7 +278,7 @@ export function ConsoleClient({
                   loading={busy === "sell"}
                   disabled={
                     busy !== null ||
-                    (stale && !pending.current) ||
+                    (stale && !hasPending) ||
                     !highestBid ||
                     !isLive
                   }
@@ -301,7 +292,7 @@ export function ConsoleClient({
                   onClick={() => call("undo-bid", "undo")}
                   loading={busy === "undo"}
                   disabled={
-                    busy !== null || (stale && !pending.current) || !highestBid
+                    busy !== null || (stale && !hasPending) || !highestBid
                   }
                 >
                   <Undo2 size={14} strokeWidth={2} /> Undo last bid
@@ -312,7 +303,7 @@ export function ConsoleClient({
               variant="danger"
               onClick={() => call("unsold", "unsold")}
               loading={busy === "unsold"}
-              disabled={busy !== null || (stale && !pending.current) || !isLive}
+              disabled={busy !== null || (stale && !hasPending) || !isLive}
             >
               <X size={14} strokeWidth={2} />
               {isLegacyRoundTwo ? "Mark unsold" : "Unsold → Retry same player"}
@@ -321,9 +312,7 @@ export function ConsoleClient({
               <Button
                 variant="outline"
                 loading={busy === "skip"}
-                disabled={
-                  busy !== null || (stale && !pending.current) || !isLive
-                }
+                disabled={busy !== null || (stale && !hasPending) || !isLive}
                 onClick={() =>
                   call(
                     "skip-player",

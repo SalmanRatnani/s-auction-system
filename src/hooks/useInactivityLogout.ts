@@ -7,8 +7,8 @@ import type { Role } from "@/types/roles";
 
 const STORAGE_KEY = "sas:last-activity";
 const DEFAULT_INACTIVITY_MS = 30 * 60 * 1000; // 30 min
-const DEFAULT_WARNING_MS = 60 * 1000;         // warn 1 min before
-const AUCTION_POLL_MS = 30 * 1000;            // poll every 30s
+const DEFAULT_WARNING_MS = 60 * 1000; // warn 1 min before
+const AUCTION_POLL_MS = 30 * 1000; // poll every 30s
 
 export function useInactivityLogout({
   role,
@@ -25,7 +25,7 @@ export function useInactivityLogout({
   const supabase = createClient();
   const [showWarning, setShowWarning] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
-  const lastActivityRef = useRef<number>(Date.now());
+  const lastActivityRef = useRef(0);
 
   const signOut = useCallback(
     async (reason: "timeout" | "auction-ended") => {
@@ -37,7 +37,7 @@ export function useInactivityLogout({
       router.push(`/login?reason=${reason}`);
       router.refresh();
     },
-    [router, supabase]
+    [router, supabase],
   );
 
   // Activity tracking (with cross-tab sync)
@@ -59,7 +59,9 @@ export function useInactivityLogout({
 
     const onStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY && e.newValue) {
-        lastActivityRef.current = Number(e.newValue);
+        const value = Number(e.newValue);
+        if (Number.isFinite(value) && value > 0)
+          lastActivityRef.current = Math.min(value, Date.now());
       }
     };
     window.addEventListener("storage", onStorage);
@@ -74,7 +76,14 @@ export function useInactivityLogout({
   useEffect(() => {
     if (!enabled) return;
     const interval = setInterval(() => {
-      const stored = Number(localStorage.getItem(STORAGE_KEY) ?? 0);
+      let stored = 0;
+      try {
+        const value = Number(localStorage.getItem(STORAGE_KEY) ?? 0);
+        if (Number.isFinite(value) && value > 0)
+          stored = Math.min(value, Date.now());
+      } catch {
+        // Private browsing can deny storage; the in-memory timer still works.
+      }
       const last = Math.max(lastActivityRef.current, stored);
       const idle = Date.now() - last;
 
@@ -98,7 +107,9 @@ export function useInactivityLogout({
     let cancelled = false;
     const check = async () => {
       try {
-        const res = await fetch("/api/auth/auction-status", { cache: "no-store" });
+        const res = await fetch("/api/auth/auction-status", {
+          cache: "no-store",
+        });
         if (!res.ok) return;
         const body = (await res.json()) as { ended?: boolean };
         if (cancelled) return;

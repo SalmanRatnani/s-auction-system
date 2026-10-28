@@ -3,6 +3,7 @@
 import { TeamLogo } from "@/components/branding/TeamLogo";
 import Link from "next/link";
 import { useAuctionState } from "@/hooks/useAuctionState";
+import { AuctionConnection } from "@/components/auction/AuctionConnection";
 import { Card, CardBody } from "@/components/ui/card";
 import { PlayerOnBlock } from "@/components/auction/PlayerOnBlock";
 import { SoldCelebration } from "@/components/auction/SoldCelebration";
@@ -20,19 +21,16 @@ export function LiveViewer({
   viewerToken?: string;
   teamLinkBase?: string;
 }) {
-  const { state, loading, realtimeConnected, stale } = useAuctionState(
-    auctionId,
-    2500,
-    viewerToken,
-  );
+  const { state, loading, error, refresh, realtimeConnected, stale } =
+    useAuctionState(auctionId, 2500, viewerToken);
 
   if (loading || !state) {
     return (
-      <div className="text-[13px] text-[var(--fg-3)]">
-        {loading
-          ? "Connecting to the auction…"
-          : "Auction unavailable or access expired. Refresh or sign in again."}
-      </div>
+      <AuctionConnection
+        loading={loading}
+        error={error}
+        onRetry={() => void refresh()}
+      />
     );
   }
 
@@ -53,7 +51,7 @@ export function LiveViewer({
           </h1>
           <p className="text-[11px] text-[var(--fg-3)] mt-1" role="status">
             {stale
-              ? "Updates delayed · reconnecting"
+              ? (error ?? "Updates delayed · reconnecting")
               : realtimeConnected
                 ? "● Realtime connected"
                 : "Live updates · automatic refresh active"}

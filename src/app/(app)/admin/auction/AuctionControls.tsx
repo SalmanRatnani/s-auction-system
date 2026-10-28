@@ -18,6 +18,7 @@ type Auction = {
 export function AuctionControls({ auction }: { auction: Auction }) {
   const router = useRouter();
   const pending = useRef<PendingAction | null>(null);
+  const [hasPending, setHasPending] = useState(false);
   const inFlight = useRef(false);
   const [busy, setBusy] = useState<
     "start" | "end" | "reset" | "mode" | "pause" | "resume" | null
@@ -69,11 +70,20 @@ export function AuctionControls({ auction }: { auction: Auction }) {
       });
     } finally {
       inFlight.current = false;
+      setHasPending(pending.current !== null);
       setBusy(null);
     }
   }
 
   async function toggleMode() {
+    if (inFlight.current) return;
+    if (pending.current) {
+      setMsg({
+        kind: "err",
+        text: "Confirm the previous action before changing mode.",
+      });
+      return;
+    }
     const next = auction.mode === "LIVE" ? "DRY_RUN" : "LIVE";
     if (next === "LIVE") {
       const ok = window.confirm(
@@ -83,21 +93,36 @@ export function AuctionControls({ auction }: { auction: Auction }) {
       );
       if (!ok) return;
     }
+    inFlight.current = true;
     setBusy("mode");
     setMsg(null);
-    const res = await fetch(`/api/auction/${auction.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: next }),
-    });
-    const body = await res.json().catch(() => ({}));
-    setBusy(null);
-    if (!res.ok) {
-      setMsg({ kind: "err", text: body.error ?? "Failed" });
-      return;
+    try {
+      const res = await fetch(`/api/auction/${auction.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: next }),
+        signal: AbortSignal.timeout(12_000),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMsg({
+          kind: "err",
+          text: body.error ?? "Mode could not be changed.",
+        });
+        return;
+      }
+      setMsg({ kind: "ok", text: `Mode set to ${next}.` });
+      router.refresh();
+    } catch {
+      setMsg({
+        kind: "err",
+        text: "The mode change could not be confirmed. Refresh to check the current mode.",
+      });
+      router.refresh();
+    } finally {
+      inFlight.current = false;
+      setBusy(null);
     }
-    setMsg({ kind: "ok", text: `Mode set to ${next}.` });
-    router.refresh();
   }
 
   const isDraft = auction.status === "DRAFT";
@@ -122,7 +147,7 @@ export function AuctionControls({ auction }: { auction: Auction }) {
         </div>
       </CardHeader>
       <CardBody className="space-y-4">
-        {pending.current && !busy && (
+        {hasPending && !busy && (
           <div role="alert" className="text-sm text-[var(--warning)]">
             Previous action awaiting confirmation.
             <Button

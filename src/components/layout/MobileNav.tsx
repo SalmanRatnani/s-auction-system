@@ -22,6 +22,9 @@ export function MobileNav({
   const dialogId = useId();
   const pathname = usePathname();
   useEffect(() => {
+    dialog.current?.close();
+  }, [pathname]);
+  useEffect(() => {
     const media = window.matchMedia("(min-width: 768px)");
     const closeOnDesktop = () => {
       if (media.matches) dialog.current?.close();
@@ -69,6 +72,8 @@ export function MobileNav({
             trigger.current?.focus();
         }}
         onClick={(e) => {
+          // The logo is a navigation link too, including on the current route.
+          if (e.target instanceof Element && e.target.closest("a")) close();
           if (
             e.target === dialog.current &&
             e.clientX > dialog.current.getBoundingClientRect().right
