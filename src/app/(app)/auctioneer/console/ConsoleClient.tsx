@@ -292,7 +292,10 @@ export function ConsoleClient({
                   onClick={() => call("undo-bid", "undo")}
                   loading={busy === "undo"}
                   disabled={
-                    busy !== null || (stale && !hasPending) || !highestBid
+                    busy !== null ||
+                    (stale && !hasPending) ||
+                    !highestBid ||
+                    !isLive
                   }
                 >
                   <Undo2 size={14} strokeWidth={2} /> Undo last bid
