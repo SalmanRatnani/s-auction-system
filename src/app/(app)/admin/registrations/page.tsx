@@ -13,8 +13,7 @@ export const dynamic = "force-dynamic";
 type Row = {
   id: string;
   name: string;
-  playing_hand: string | null;
-  playing_centre: string | null;
+  raw: { data?: { finalCategory?: string } } | null;
   image_url: string | null;
   status: string;
   submitted_at: string | null;
@@ -33,7 +32,7 @@ async function Inner() {
 
   const { data } = await supabase
     .from("registrations")
-    .select("id, name, playing_hand, playing_centre, image_url, status, submitted_at")
+    .select("id, name, raw, image_url, status, submitted_at")
     .order("submitted_at", { ascending: false })
     .limit(500);
 
@@ -97,8 +96,7 @@ function Section({ title, rows }: { title: string; rows: Row[] }) {
                       {String(r.name ?? "—")}
                     </div>
                     <div className="text-[11px] text-[var(--fg-3)] mt-0.5 truncate">
-                      {r.playing_hand ? `${r.playing_hand} hand` : "Hand —"} ·{" "}
-                      {r.playing_centre ?? "Centre —"}
+                      Final Category: {r.raw?.data?.finalCategory ?? "Not set"}
                     </div>
                     <div className="mt-2 flex items-center gap-2">
                       <Badge
