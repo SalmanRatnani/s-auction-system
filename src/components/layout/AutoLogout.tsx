@@ -4,12 +4,10 @@ import { useRouter } from "next/navigation";
 import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import type { Role } from "@/types/roles";
 import { Clock } from "lucide-react";
 
-export function AutoLogout({ role }: { role: Role }) {
+export function AutoLogout() {
   const { showWarning, secondsLeft, staySignedIn } = useInactivityLogout({
-    role,
   });
   const router = useRouter();
 
