@@ -40,7 +40,7 @@ export default async function AppLayout({
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
-      <AutoLogout role={role} />
+      <AutoLogout />
     </div>
   );
 }
