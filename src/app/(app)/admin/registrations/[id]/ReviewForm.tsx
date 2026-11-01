@@ -26,7 +26,7 @@ export function ReviewForm({
   async function act(kind: "approve" | "reject" | "revoke") {
     setErr(null);
     if (kind === "approve" && !grade) {
-      setErr("Pick a grade before approving.");
+      setErr("Choose a final category before approving.");
       return;
     }
     if (kind === "revoke") {
@@ -65,7 +65,7 @@ export function ReviewForm({
         <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
           <div className="flex-1 space-y-1.5">
             <label className="block text-[11px] uppercase tracking-[0.08em] text-[var(--fg-4)]">
-              Grade
+              Final Category
             </label>
             <select
               value={grade}
