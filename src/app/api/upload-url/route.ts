@@ -9,7 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
-type FileMeta = { kind: "image" | "proof"; name: string; mimeType: string };
+type FileMeta = { kind: "image"; name: string; mimeType: string };
 type Body = { responseId: string; files: FileMeta[] };
 
 function extFromMime(mime: string, fallback = "bin") {
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
   if (
     !validResponseId(body?.responseId) ||
     !Array.isArray(body.files) ||
-    body.files.length > 3
+    body.files.length !== 1
   ) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
@@ -83,15 +83,14 @@ export async function POST(request: NextRequest) {
   for (const f of body.files) {
     if (
       !f ||
-      (f.kind !== "image" && f.kind !== "proof") ||
-      !["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(
+      f.kind !== "image" ||
+      !["image/jpeg", "image/png", "image/webp"].includes(
         f.mimeType,
-      ) ||
-      (f.kind === "image" && f.mimeType === "application/pdf")
+      )
     )
       return NextResponse.json({ error: "Invalid file type" }, { status: 400 });
 
-    const bucket = f.kind === "image" ? "player-images" : "age-proofs";
+    const bucket = "player-images";
     const ext = extFromMime(f.mimeType);
     const path = `${year}/${body.responseId}/${f.kind}.${ext}`;
 
