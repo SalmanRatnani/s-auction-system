@@ -3,20 +3,16 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Role } from "@/types/roles";
 
 const STORAGE_KEY = "sas:last-activity";
 const DEFAULT_INACTIVITY_MS = 30 * 60 * 1000; // 30 min
 const DEFAULT_WARNING_MS = 60 * 1000; // warn 1 min before
-const AUCTION_POLL_MS = 30 * 1000; // poll every 30s
 
 export function useInactivityLogout({
-  role,
   inactivityMs = DEFAULT_INACTIVITY_MS,
   warningMs = DEFAULT_WARNING_MS,
   enabled = true,
 }: {
-  role: Role;
   inactivityMs?: number;
   warningMs?: number;
   enabled?: boolean;
@@ -28,7 +24,7 @@ export function useInactivityLogout({
   const lastActivityRef = useRef(0);
 
   const signOut = useCallback(
-    async (reason: "timeout" | "auction-ended") => {
+    async (reason: "timeout") => {
       try {
         await supabase.auth.signOut();
       } catch {
@@ -99,32 +95,8 @@ export function useInactivityLogout({
     return () => clearInterval(interval);
   }, [enabled, inactivityMs, warningMs, signOut]);
 
-  // Auction-end broadcast (non-controllers get signed out)
-  useEffect(() => {
-    if (!enabled) return;
-    if (role === "MAIN_CONTROLLER") return; // controllers stay
-
-    let cancelled = false;
-    const check = async () => {
-      try {
-        const res = await fetch("/api/auth/auction-status", {
-          cache: "no-store",
-        });
-        if (!res.ok) return;
-        const body = (await res.json()) as { ended?: boolean };
-        if (cancelled) return;
-        if (body.ended) signOut("auction-ended");
-      } catch {
-        // network blip — retry next tick
-      }
-    };
-    check();
-    const interval = setInterval(check, AUCTION_POLL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [enabled, role, signOut]);
+  // Auction status must not invalidate authentication.
+  // Ended auctions remain viewable; server-side auction commands enforce LIVE status.
 
   const staySignedIn = useCallback(() => {
     const now = Date.now();
