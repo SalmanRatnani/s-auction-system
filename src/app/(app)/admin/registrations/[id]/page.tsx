@@ -4,6 +4,8 @@ import { RoleGuard } from "@/components/guards/RoleGuard";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ReviewForm } from "./ReviewForm";
+import { DeleteRegistrationButton } from "../DeleteRegistrationButton";
+import { REGISTRATION_FORM_URL } from "@/constants/registration";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +74,11 @@ async function Inner({ params }: { params: Promise<{ id: string }> }) {
           </div>
         </div>
       </header>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <a href={REGISTRATION_FORM_URL} target="_blank" rel="noopener noreferrer" className="text-[13px] underline underline-offset-4 text-[var(--fg-2)] hover:text-[var(--fg-1)]">Open Google registration form ↗</a>
+        <DeleteRegistrationButton registrationId={reg.id} registrationName={reg.name} status={reg.status} />
+      </div>
 
       <div className="grid grid-cols-1 gap-4">
         <Card>
