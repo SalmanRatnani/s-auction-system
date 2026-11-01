@@ -88,13 +88,8 @@ async function Inner({ params }: { params: Promise<{ id: string }> }) {
           <CardBody>
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4 text-[13px]">
               <Field label="Full Name" value={reg.name} />
-              <Field label="Playing Hand" value={reg.playing_hand} />
-              <Field label="Playing Centre" value={reg.playing_centre} />
-              <Field
-                label="Achievements"
-                value={reg.achievements}
-                className="sm:col-span-2"
-              />
+              <Field label="Final Category" value={(reg.raw as {data?: {finalCategory?: string}} | null)?.data?.finalCategory ?? "Not provided (older registration)"} />
+              <Field label="Player Photo (tryout photo)" value={reg.image_url ? "Uploaded" : "Not provided"} />
             </dl>
           </CardBody>
         </Card>
@@ -140,7 +135,7 @@ async function Inner({ params }: { params: Promise<{ id: string }> }) {
       <ReviewForm
         registrationId={reg.id}
         currentStatus={reg.status}
-        defaultGrade={null}
+        defaultGrade={(reg.raw as {data?: {finalCategory?: string}} | null)?.data?.finalCategory ?? null}
       />
     </div>
   );
