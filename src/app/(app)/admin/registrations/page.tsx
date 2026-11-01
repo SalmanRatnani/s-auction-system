@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+import { REGISTRATION_FORM_URL } from "@/constants/registration";
+import { DeleteRegistrationButton } from "./DeleteRegistrationButton";
 import { createClient } from "@/lib/supabase/server";
 import { RoleGuard } from "@/components/guards/RoleGuard";
 import { Card, CardBody } from "@/components/ui/card";
@@ -40,7 +43,8 @@ async function Inner() {
 
   return (
     <div className="space-y-6 max-w-6xl animate-fade-up">
-      <header>
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div>
         <h1 className="text-[22px] font-semibold tracking-tight">
           Registrations
         </h1>
@@ -48,6 +52,10 @@ async function Inner() {
           <span className="tnum">{pending.length}</span> pending ·{" "}
           <span className="tnum">{rest.length}</span> reviewed
         </p>
+        </div>
+        <a href={REGISTRATION_FORM_URL} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[var(--accent-line)] px-3 text-[13px] text-[var(--fg-1)] hover:bg-[var(--bg-2)]">
+          Open player registration form <ArrowUpRight size={15} />
+        </a>
       </header>
 
       <Section title="Pending" rows={pending} />
@@ -71,7 +79,8 @@ function Section({ title, rows }: { title: string; rows: Row[] }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
           {rows.map((r) => (
-            <Link key={r.id} href={`/admin/registrations/${r.id}`}>
+            <div key={r.id} className="relative">
+            <Link href={`/admin/registrations/${r.id}`}>
               <Card className="hover:border-[var(--accent-line)] transition-colors duration-100 cursor-pointer h-full">
                 <CardBody className="flex gap-3 items-start p-4">
                   {r.image_url ? (
@@ -113,6 +122,8 @@ function Section({ title, rows }: { title: string; rows: Row[] }) {
                 </CardBody>
               </Card>
             </Link>
+            <div className="mt-2 px-1 pb-2"><DeleteRegistrationButton registrationId={r.id} registrationName={r.name} status={r.status} /></div>
+            </div>
           ))}
         </div>
       )}
