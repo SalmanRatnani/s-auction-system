@@ -7,19 +7,17 @@ import {
 } from "@/lib/security/webhook";
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { CATEGORY_ORDER, type Category } from "@/constants/categories";
 
 export const runtime = "nodejs";
 
-// The Google Form now collects ONLY:
-// Full Name, Playing Hand, Playing Centre, Achievements, Player Photo.
+// The Google Form collects only Full Name, Final Category, and Player Photo (tryout photo).
 type Body = {
   responseId: string;
   submittedAt: string;
   data: {
     name?: unknown;
-    playingHand?: unknown;
-    playingCentre?: unknown;
-    achievements?: unknown;
+    finalCategory?: unknown;
   } & Record<string, unknown>;
   filePaths: { image?: { bucket: string; path: string } };
   warning?: string;
@@ -30,15 +28,6 @@ function clean(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const t = v.trim();
   return t.length > 0 ? t : null;
-}
-
-/** "Right", "right-handed", "R" → "Right"; same for Left. Anything else → null. */
-function normalizeHand(v: unknown): "Right" | "Left" | null {
-  const s = clean(v)?.toLowerCase();
-  if (!s) return null;
-  if (s.startsWith("r")) return "Right";
-  if (s.startsWith("l")) return "Left";
-  return null;
 }
 
 export async function POST(request: NextRequest) {
@@ -72,9 +61,11 @@ export async function POST(request: NextRequest) {
   }
 
   const name = clean(body?.data?.name);
-  if (!validResponseId(body?.responseId) || !name || name.length > 200) {
+  const finalCategory = clean(body?.data?.finalCategory);
+  if (!validResponseId(body?.responseId) || !name || name.length > 200 ||
+      !finalCategory || !CATEGORY_ORDER.includes(finalCategory as Category)) {
     return NextResponse.json(
-      { error: "responseId and name are required" },
+      { error: "Valid responseId, full name and final category are required" },
       { status: 400 },
     );
   }
@@ -97,9 +88,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, id: existing.id, duplicate: true });
   }
 
-  // Public URL for player image (from player-images bucket)
+  // A valid uploaded tryout photo is mandatory for new registrations.
+  if (!body.filePaths?.image?.path) {
+    return NextResponse.json({ error: "Player Photo (tryout photo) is required" }, { status: 400 });
+  }
+  // Public URL for verified player image (from player-images bucket)
   let imageUrl: string | null = null;
-  if (body.filePaths?.image?.path) {
+  {
     const image = body.filePaths.image;
     const allowed = new RegExp(
       `^20[0-9]{2}/${body.responseId}/image\\.(jpg|png|webp)$`,
@@ -145,12 +140,12 @@ export async function POST(request: NextRequest) {
       google_response_id: body.responseId,
       raw: body,
 
-      // Collected fields
+      // The only fields collected: name, category in raw.data, and photo.
       name,
-      playing_hand: normalizeHand(body.data.playingHand),
-      playing_centre: clean(body.data.playingCentre),
-      achievements: clean(body.data.achievements),
       image_url: imageUrl,
+      playing_hand: null,
+      playing_centre: null,
+      achievements: null,
 
       // No longer collected → always null
       dob: null,
