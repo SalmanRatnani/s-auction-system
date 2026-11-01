@@ -88,13 +88,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, id: existing.id, duplicate: true });
   }
 
-  // A valid uploaded tryout photo is mandatory for new registrations.
-  if (!body.filePaths?.image?.path) {
-    return NextResponse.json({ error: "Player Photo (tryout photo) is required" }, { status: 400 });
-  }
-  // Public URL for verified player image (from player-images bucket)
+  // Optional photo: validate, normalize and store only when uploaded.
   let imageUrl: string | null = null;
-  {
+  if (body.filePaths?.image?.path) {
     const image = body.filePaths.image;
     const allowed = new RegExp(
       `^20[0-9]{2}/${body.responseId}/image\\.(jpg|png|webp)$`,

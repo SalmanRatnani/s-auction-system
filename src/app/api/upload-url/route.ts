@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
   if (
     !validResponseId(body?.responseId) ||
     !Array.isArray(body.files) ||
-    body.files.length !== 1
+    body.files.length > 1
   ) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
