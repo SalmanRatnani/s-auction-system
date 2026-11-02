@@ -211,7 +211,7 @@ export function useAuctionState(
       setLoading(false);
       if (needsRefreshRef.current) {
         needsRefreshRef.current = false;
-        // A change during a request must never be discarded.
+        // Collapse bursts of realtime events into one reconciliation.
         void refresh();
       }
     }
@@ -354,11 +354,11 @@ export function useAuctionState(
     let stopped = false;
     const schedule = () => {
       const base = viewerToken
-        ? Math.max(pollMs, 2500)
+        ? Math.max(pollMs, 10000)
         : connected
           ? Math.max(pollMs, 5000)
           : Math.max(pollMs, 1500);
-      const delay = Math.min(15000, base * 2 ** Math.min(failures.current, 3));
+      const delay = Math.min(60000, base * 2 ** Math.min(failures.current, 3));
       timer = setTimeout(
         async () => {
           await refresh();
