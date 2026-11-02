@@ -20,29 +20,26 @@ export async function middleware(request: NextRequest) {
   if (pathname === "/api" || pathname.startsWith("/api/")) {
     // A local safety backstop ahead of expensive auction API handlers.
     // For global rate limits configure Vercel Firewall or another shared store.
-    const auctionRoute = /^\\/api\\/auction\\/[a-f0-9-]{36}\\/([^/]+)$/i.exec(pathname);
-    const operation = auctionRoute?.[1];
+    const parts = pathname.split("/");
+    const operation = parts.length === 5 &&
+      parts[1] === "api" && parts[2] === "auction" &&
+      /^[a-f0-9-]{36}$/i.test(parts[3]) ? parts[4] : null;
     const mutation = request.method === "POST" && operation &&
       ["sell", "unsold", "undo-bid", "next-player", "skip-player",
-       "start", "end", "pause", "resume", "reset", "topup", "finalize-captains",
-       "round2"].includes(operation);
-    const snapshot = request.method === "GET" && operation === "state";
-    if (mutation || snapshot) {
-      // Values supplied by Vercel's trusted reverse proxy; never accept
-      // user-provided authorization identities for throttling.
-      const ip = request.headers.get("x-real-ip") ||
-        request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
-        "unknown";
-      const bucket = mutation ? "auction-write" : "auction-read";
+       "start", "end", "pause", "resume", "reset", "topup",
+       "finalize-captains", "round2"].includes(operation);
+    if (mutation) {
+      // Vercel overwrites this forwarded header at its trusted proxy.
+      const ip = request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() || "unknown";
       const { allowed, retryAfter } = limitAuctionTraffic(
-        `${bucket}:${ip}`,
-        mutation ? 45 : 120,
-        60_000,
+        `auction-write:${ip}`, 45, 60_000,
       );
       if (!allowed) {
         return NextResponse.json(
-          { error: "Too many auction requests. Retry shortly." },
-          { status: 429, headers: { "Retry-After": String(retryAfter), "Cache-Control": "no-store" } },
+          { error: "Too many auction commands. Retry shortly." },
+          { status: 429, headers: {
+            "Retry-After": String(retryAfter), "Cache-Control": "no-store",
+          } },
         );
       }
     }
