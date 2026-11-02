@@ -1,4 +1,4 @@
-import { Radio, RefreshCw, WifiOff } from "lucide-react";
+import { Radio, RefreshCw, ServerOff } from "lucide-react";
 
 export function AuctionConnection({
   loading,
@@ -9,7 +9,7 @@ export function AuctionConnection({
   error: string | null;
   onRetry: () => void;
 }) {
-  const Icon = loading ? Radio : WifiOff;
+  const Icon = loading ? Radio : ServerOff;
   return (
     <section className="auction-connection" role="status" aria-atomic="true">
       <span className="auction-connection-icon" aria-hidden="true">
@@ -19,7 +19,7 @@ export function AuctionConnection({
         <h2>
           {loading
             ? "Connecting to the room"
-            : "Auction connection unavailable"}
+            : "Auction updates temporarily unavailable"}
         </h2>
         <p>
           {loading
