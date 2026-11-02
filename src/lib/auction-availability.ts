@@ -15,5 +15,11 @@ export function auctionStateError(status: number, code?: unknown): string {
   if (status === 404) return "This auction is no longer available.";
   if (status === 503 && code === "AUCTION_SETUP_REQUIRED")
     return AUCTION_SETUP_MESSAGE;
-  return "Live updates are unavailable. Check your connection and try again.";
+  if (status === 429)
+    return "The auction server is handling too many requests. Retrying automatically.";
+  if (status === 408 || status === 504 || status >= 500)
+    return "The auction server is responding slowly or is temporarily unavailable. Retrying automatically.";
+  if (status === 0)
+    return "Could not contact the auction server. Retrying automatically.";
+  return "Auction updates were interrupted. Retrying automatically.";
 }

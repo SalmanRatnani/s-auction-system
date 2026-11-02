@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { isTrustedMutation } from "@/lib/security/request";
+import { limitAuctionTraffic } from "@/lib/security/auction-throttle";
 
 const PUBLIC_PATHS = [
   "/",
@@ -17,6 +18,31 @@ export async function middleware(request: NextRequest) {
   // API routes perform their own getUser + role checks. Do not add a second
   // auth round trip to every bid; this boundary only blocks cross-origin writes.
   if (pathname === "/api" || pathname.startsWith("/api/")) {
+    // A local safety backstop ahead of expensive auction API handlers.
+    // For global rate limits configure Vercel Firewall or another shared store.
+    const parts = pathname.split("/");
+    const operation = parts.length === 5 &&
+      parts[1] === "api" && parts[2] === "auction" &&
+      /^[a-f0-9-]{36}$/i.test(parts[3]) ? parts[4] : null;
+    const mutation = request.method === "POST" && operation &&
+      ["sell", "unsold", "undo-bid", "next-player", "skip-player",
+       "start", "end", "pause", "resume", "reset", "topup",
+       "finalize-captains", "round2"].includes(operation);
+    if (mutation) {
+      // Vercel overwrites this forwarded header at its trusted proxy.
+      const ip = request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+      const { allowed, retryAfter } = limitAuctionTraffic(
+        `auction-write:${ip}`, 45, 60_000,
+      );
+      if (!allowed) {
+        return NextResponse.json(
+          { error: "Too many auction commands. Retry shortly." },
+          { status: 429, headers: {
+            "Retry-After": String(retryAfter), "Cache-Control": "no-store",
+          } },
+        );
+      }
+    }
     if (!isTrustedMutation(request))
       return NextResponse.json(
         { error: "Cross-origin request denied" },

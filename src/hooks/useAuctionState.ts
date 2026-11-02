@@ -93,6 +93,7 @@ export function useAuctionState(
   const [stale, setStale] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const lastSuccess = useRef(0);
+  const retryAfterMs = useRef(0);
   const failures = useRef(0);
   const generation = useRef(0);
   const controller = useRef<AbortController | null>(null);
@@ -170,6 +171,12 @@ export function useAuctionState(
           lastSuccess.current = 0;
         }
         setError(auctionStateError(response.status, body?.code));
+        if (response.status === 429 || response.status === 503) {
+          const seconds = Number(response.headers.get("Retry-After"));
+          retryAfterMs.current = Number.isFinite(seconds) && seconds > 0
+            ? Math.min(60_000, seconds * 1000)
+            : 15000;
+        }
         setStale(true);
         failures.current += 1;
       } else {
@@ -196,12 +203,15 @@ export function useAuctionState(
         setError(null);
         failures.current = 0;
         lastSuccess.current = Date.now();
+        retryAfterMs.current = 0;
         setStale(false);
       }
     } catch {
       if (requestGeneration === generation.current) {
         failures.current += 1;
-        setError(auctionStateError(0));
+        setError(navigator.onLine
+          ? "Auction server did not respond in time. Retrying automatically."
+          : "Your device appears offline. Reconnect to continue receiving updates.");
         setStale(true);
       }
     } finally {
@@ -211,7 +221,7 @@ export function useAuctionState(
       setLoading(false);
       if (needsRefreshRef.current) {
         needsRefreshRef.current = false;
-        // A change during a request must never be discarded.
+        // Collapse bursts of realtime events into one reconciliation.
         void refresh();
       }
     }
@@ -223,6 +233,7 @@ export function useAuctionState(
     needsRefreshRef.current = false;
     lastSuccess.current = 0;
     failures.current = 0;
+    retryAfterMs.current = 0;
     recentBidRef.current = null;
     setState(null);
     setError(null);
@@ -358,7 +369,10 @@ export function useAuctionState(
         : connected
           ? Math.max(pollMs, 5000)
           : Math.max(pollMs, 1500);
-      const delay = Math.min(15000, base * 2 ** Math.min(failures.current, 3));
+      const delay = Math.max(
+        retryAfterMs.current,
+        Math.min(60000, base * 2 ** Math.min(failures.current, 3)),
+      );
       timer = setTimeout(
         async () => {
           await refresh();

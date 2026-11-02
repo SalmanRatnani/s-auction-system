@@ -16,25 +16,37 @@ export async function GET(
   const { id } = await params;
   if (!UUID.test(id))
     return NextResponse.json({ error: "Invalid auction ID" }, { status: 400 });
-  const client = await createClient();
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  let role = "";
-  if (user) {
-    const { data: profile, error } = await client
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-    if (!error) role = profile?.role ?? "";
-  }
   const token = request.nextUrl.searchParams.get("viewerToken");
-  if (!role && !(token && (await validateViewerToken(token, id))))
-    return NextResponse.json(
-      { error: "Viewer access expired or sign-in required" },
-      { status: 401 },
-    );
+  let role = "";
+  let userId: string | null = null;
+  if (token !== null) {
+    // Bearer-link viewers must remain VIEWER even when they have auth cookies.
+    // Avoid an Auth getUser() call and a role lookup on every spectator poll.
+    // Validate on EVERY request so revoked/expired links stop immediately.
+    if (!(await validateViewerToken(token, id)))
+      return NextResponse.json(
+        { error: "Viewer access expired or sign-in required" },
+        { status: 401, headers: { "Cache-Control": "no-store" } },
+      );
+    role = "VIEWER";
+  } else {
+    const client = await createClient();
+    const { data: { user } } = await client.auth.getUser();
+    if (user) {
+      const { data: profile, error: roleError } = await client
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+      if (!roleError) role = profile?.role ?? "";
+      userId = user.id;
+    }
+    if (!role)
+      return NextResponse.json(
+        { error: "Viewer access expired or sign-in required" },
+        { status: 401, headers: { "Cache-Control": "no-store" } },
+      );
+  }
   const { data, error } = await createAdminClient().rpc("auction_snapshot", {
     p_auction_id: id,
   });
@@ -68,7 +80,7 @@ export async function GET(
       projectAuctionSnapshot(
         data as Snapshot,
         role || "VIEWER",
-        user?.id ?? null,
+        userId,
       ),
       {
         headers: { "Cache-Control": "private, no-store, max-age=0" },
