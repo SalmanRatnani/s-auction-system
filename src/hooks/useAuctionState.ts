@@ -354,7 +354,7 @@ export function useAuctionState(
     let stopped = false;
     const schedule = () => {
       const base = viewerToken
-        ? Math.max(pollMs, 10000)
+        ? Math.max(pollMs, 2500)
         : connected
           ? Math.max(pollMs, 5000)
           : Math.max(pollMs, 1500);
